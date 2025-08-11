@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)",
+      "Bash(docker-compose:*)",
+      "Bash(npm run build:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(npx tsc:*)",
+      "Bash(docker logs:*)",
+      "Bash(cp:*)",
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(curl:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm start)",
+      "Bash(taskkill:*)",
+      "Bash(docker exec:*)",
+      "Bash(touch:*)",
+      "Bash(npm init:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker pull:*)",
+      "Bash(grep:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(npx knex migrate:make:*)",
+      "Bash(npx knex migrate:latest:*)",
+      "Bash(del 20250809044930_create_attachments_table.js)"
+    ],
+    "deny": []
+  }
+}

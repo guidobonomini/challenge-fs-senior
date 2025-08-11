@@ -1,0 +1,279 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: backend/dist/
+      
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+      
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_PORT }}
+          script: |
+            cd /var/www/taskmanager-staging
+            git pull origin main
+            
+            # Update environment files
+            cp .env.staging .env
+            
+            # Build and restart services
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml pull
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Wait for services to be ready
+            sleep 30
+            
+            # Run health checks
+            curl -f http://localhost:3000/api/health || exit 1
+            curl -f http://localhost:3001/health || exit 1
+      
+      - name: Run smoke tests
+        run: |
+          npm ci
+          npm run test:e2e:staging
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          channel: '#deployments'
+          message: |
+            :white_check_mark: Staging deployment successful!
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            URL: ${{ secrets.STAGING_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: backend/dist/
+      
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+      
+      - name: Create backup
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd /var/www/taskmanager
+            
+            # Create database backup
+            docker exec taskmanager_database pg_dump -U $POSTGRES_USER $POSTGRES_DB > backup_$(date +%Y%m%d_%H%M%S).sql
+            
+            # Create application backup
+            tar -czf backup_app_$(date +%Y%m%d_%H%M%S).tar.gz \
+              --exclude=node_modules \
+              --exclude=.git \
+              --exclude=dist \
+              --exclude=coverage \
+              .
+      
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd /var/www/taskmanager
+            git pull origin main
+            
+            # Update environment files
+            cp .env.production .env
+            
+            # Zero-downtime deployment
+            docker-compose -f docker-compose.prod.yml pull
+            
+            # Update services one by one
+            docker-compose -f docker-compose.prod.yml up -d --no-deps database redis
+            sleep 10
+            
+            docker-compose -f docker-compose.prod.yml up -d --no-deps migrate
+            sleep 30
+            
+            docker-compose -f docker-compose.prod.yml up -d --no-deps backend
+            sleep 15
+            
+            docker-compose -f docker-compose.prod.yml up -d --no-deps frontend
+            sleep 10
+            
+            # Clean up old containers and images
+            docker system prune -f
+      
+      - name: Run production health checks
+        run: |
+          # Wait for services to be fully ready
+          sleep 60
+          
+          # Health check endpoints
+          curl -f ${{ secrets.PRODUCTION_URL }}/api/health || exit 1
+          curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
+          
+          # Basic functionality tests
+          response=$(curl -s -X POST ${{ secrets.PRODUCTION_URL }}/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"${{ secrets.HEALTH_CHECK_EMAIL }}","password":"${{ secrets.HEALTH_CHECK_PASSWORD }}"}')
+          
+          if [[ $response == *"token"* ]]; then
+            echo "Login functionality working"
+          else
+            echo "Login health check failed"
+            exit 1
+          fi
+      
+      - name: Update monitoring alerts
+        run: |
+          # Update New Relic deployment marker
+          curl -X POST "https://api.newrelic.com/v2/applications/${{ secrets.NEW_RELIC_APP_ID }}/deployments.json" \
+            -H "X-Api-Key:${{ secrets.NEW_RELIC_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "deployment": {
+                "revision": "${{ github.sha }}",
+                "changelog": "Deployed from GitHub Actions",
+                "description": "Production deployment",
+                "user": "github-actions"
+              }
+            }'
+      
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          channel: '#deployments'
+          message: |
+            :rocket: Production deployment successful!
+            Version: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            URL: ${{ secrets.PRODUCTION_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Notify deployment failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          channel: '#deployments'
+          message: |
+            :x: Production deployment failed!
+            Version: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Please check the logs and rollback if necessary.
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    environment: production
+    if: failure()
+    needs: [deploy-production]
+    
+    steps:
+      - name: Rollback to previous version
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            cd /var/www/taskmanager
+            
+            # Get the previous successful deployment
+            git log --oneline -n 10
+            
+            echo "Please manually rollback to a previous version if needed"
+            echo "Available backups:"
+            ls -la backup_*.tar.gz | tail -5
+            ls -la backup_*.sql | tail -5
+      
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              channel: '#deployments',
+              attachments: [{
+                color: 'warning',
+                title: ':warning: Production Rollback Initiated',
+                text: 'Deployment failed. Manual intervention may be required.',
+                fields: [{
+                  title: 'Commit',
+                  value: '${{ github.sha }}',
+                  short: true
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

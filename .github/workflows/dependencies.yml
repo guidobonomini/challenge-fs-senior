@@ -1,0 +1,307 @@
+name: Dependency Management
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  audit-dependencies:
+    name: Audit Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Audit backend dependencies
+        working-directory: ./backend
+        run: |
+          echo "🔍 Auditing backend dependencies..."
+          npm audit --json > backend-audit.json || true
+          npm audit
+      
+      - name: Audit frontend dependencies
+        working-directory: ./frontend
+        run: |
+          echo "🔍 Auditing frontend dependencies..."
+          npm audit --json > frontend-audit.json || true
+          npm audit
+      
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports
+          path: |
+            backend/backend-audit.json
+            frontend/frontend-audit.json
+
+  check-outdated:
+    name: Check Outdated Packages
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Check backend outdated packages
+        working-directory: ./backend
+        run: |
+          echo "📦 Checking backend outdated packages..."
+          npm outdated --json > backend-outdated.json || true
+          npm outdated || true
+      
+      - name: Check frontend outdated packages
+        working-directory: ./frontend
+        run: |
+          echo "📦 Checking frontend outdated packages..."
+          npm outdated --json > frontend-outdated.json || true
+          npm outdated || true
+      
+      - name: Upload outdated reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: outdated-reports
+          path: |
+            backend/backend-outdated.json
+            frontend/frontend-outdated.json
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Install license checker
+        run: npm install -g license-checker
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Check backend licenses
+        working-directory: ./backend
+        run: |
+          echo "📜 Checking backend licenses..."
+          license-checker --json > backend-licenses.json
+          license-checker --summary
+          
+          # Check for problematic licenses
+          if license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' --failOn 'GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0'; then
+            echo "✅ All backend licenses are compliant"
+          else
+            echo "❌ Some backend licenses may be problematic"
+            exit 1
+          fi
+      
+      - name: Check frontend licenses
+        working-directory: ./frontend
+        run: |
+          echo "📜 Checking frontend licenses..."
+          license-checker --json > frontend-licenses.json
+          license-checker --summary
+          
+          # Check for problematic licenses
+          if license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' --failOn 'GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0'; then
+            echo "✅ All frontend licenses are compliant"
+          else
+            echo "❌ Some frontend licenses may be problematic"
+            exit 1
+          fi
+      
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-reports
+          path: |
+            backend/backend-licenses.json
+            frontend/frontend-licenses.json
+
+  dependency-graph:
+    name: Generate Dependency Graph
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Install madge for dependency analysis
+        run: npm install -g madge
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Generate backend dependency graph
+        working-directory: ./backend
+        run: |
+          echo "📊 Generating backend dependency graph..."
+          madge --image backend-deps.png src/
+          madge --circular src/ || echo "No circular dependencies found"
+      
+      - name: Generate frontend dependency graph
+        working-directory: ./frontend
+        run: |
+          echo "📊 Generating frontend dependency graph..."
+          madge --image frontend-deps.png src/
+          madge --circular src/ || echo "No circular dependencies found"
+      
+      - name: Upload dependency graphs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-graphs
+          path: |
+            backend/backend-deps.png
+            frontend/frontend-deps.png
+
+  create-dependency-report:
+    name: Create Dependency Report
+    runs-on: ubuntu-latest
+    needs: [audit-dependencies, check-outdated, license-check, dependency-graph]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: reports/
+      
+      - name: Generate summary report
+        run: |
+          echo "# 📋 Dependency Report - $(date)" > DEPENDENCY_REPORT.md
+          echo "" >> DEPENDENCY_REPORT.md
+          echo "## 🔍 Security Audit" >> DEPENDENCY_REPORT.md
+          
+          if [ -f reports/audit-reports/backend-audit.json ]; then
+            backend_vulns=$(jq '.metadata.vulnerabilities.total // 0' reports/audit-reports/backend-audit.json)
+            echo "- **Backend**: $backend_vulns vulnerabilities found" >> DEPENDENCY_REPORT.md
+          fi
+          
+          if [ -f reports/audit-reports/frontend-audit.json ]; then
+            frontend_vulns=$(jq '.metadata.vulnerabilities.total // 0' reports/audit-reports/frontend-audit.json)
+            echo "- **Frontend**: $frontend_vulns vulnerabilities found" >> DEPENDENCY_REPORT.md
+          fi
+          
+          echo "" >> DEPENDENCY_REPORT.md
+          echo "## 📦 Outdated Packages" >> DEPENDENCY_REPORT.md
+          
+          if [ -f reports/outdated-reports/backend-outdated.json ]; then
+            backend_outdated=$(jq 'keys | length' reports/outdated-reports/backend-outdated.json 2>/dev/null || echo "0")
+            echo "- **Backend**: $backend_outdated packages have updates available" >> DEPENDENCY_REPORT.md
+          fi
+          
+          if [ -f reports/outdated-reports/frontend-outdated.json ]; then
+            frontend_outdated=$(jq 'keys | length' reports/outdated-reports/frontend-outdated.json 2>/dev/null || echo "0")
+            echo "- **Frontend**: $frontend_outdated packages have updates available" >> DEPENDENCY_REPORT.md
+          fi
+          
+          echo "" >> DEPENDENCY_REPORT.md
+          echo "## 📜 License Status" >> DEPENDENCY_REPORT.md
+          echo "License check completed. See detailed reports for any compliance issues." >> DEPENDENCY_REPORT.md
+          
+          echo "" >> DEPENDENCY_REPORT.md
+          echo "## 🔗 Dependency Graphs" >> DEPENDENCY_REPORT.md
+          echo "Dependency graphs generated for both backend and frontend projects." >> DEPENDENCY_REPORT.md
+          
+          echo "" >> DEPENDENCY_REPORT.md
+          echo "---" >> DEPENDENCY_REPORT.md
+          echo "*Report generated on $(date) by GitHub Actions*" >> DEPENDENCY_REPORT.md
+      
+      - name: Upload summary report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-summary
+          path: DEPENDENCY_REPORT.md
+      
+      - name: Comment on recent PR or issue
+        uses: actions/github-script@v7
+        if: github.event_name == 'schedule'
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('DEPENDENCY_REPORT.md', 'utf8');
+            
+            // Find the most recent open issue or PR
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'updated',
+              per_page: 1
+            });
+            
+            if (issues.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: `🤖 **Weekly Dependency Report**\n\n${report}`
+              });
+            }

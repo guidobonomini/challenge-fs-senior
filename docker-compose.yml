@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: taskmanagement-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: taskmanagement_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskmanagement-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: taskmanagement-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - taskmanagement-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskmanagement-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=taskmanagement_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+      - JWT_EXPIRES_IN=7d
+      - JWT_REFRESH_SECRET=your_super_secret_refresh_key_change_this_in_production
+      - JWT_REFRESH_EXPIRES_IN=30d
+      - CORS_ORIGIN=http://localhost:3000
+      - ANTHROPIC_API_KEY=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
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taskmanagement-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:8000/api
+    container_name: taskmanagement-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - taskmanagement-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database Migration Service
+  migrate:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile.migrate
+    container_name: taskmanagement-migrate
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=taskmanagement_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - taskmanagement-network
+    command: ["npm", "run", "migrate"]
+    restart: "no"
+
+  # Database Seeding Service
+  seed:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile.migrate
+    container_name: taskmanagement-seed
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=taskmanagement_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - taskmanagement-network
+    command: ["npm", "run", "seed"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  taskmanagement-network:
+    driver: bridge
+    name: taskmanagement-network
