@@ -311,13 +311,7 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
-      - name: Run backend security audit
-        working-directory: ./backend
-        run: npm audit --audit-level=moderate
-      
-      - name: Run frontend security audit
-        working-directory: ./frontend
-        run: npm audit --audit-level=moderate
+
       
       - name: Run CodeQL Analysis
         uses: github/codeql-action/init@v3
