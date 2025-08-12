@@ -72,7 +72,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should include time range parameter', async () => {
-      const mockData = [];
+      const mockData: any[] = [];
       mockedApiService.get.mockResolvedValue(mockData);
 
       await analyticsService.getTaskProgressAnalytics(undefined, undefined, 'week');
@@ -130,7 +130,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should include custom parameters', async () => {
-      const mockData = [];
+      const mockData: any[] = [];
       mockedApiService.get.mockResolvedValue(mockData);
 
       await analyticsService.getVelocityAnalytics('team-1', 'week', 10);
