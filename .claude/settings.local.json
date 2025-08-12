@@ -48,7 +48,9 @@
       "Bash(./k6-v1.1.0-windows-amd64/k6.exe run smoke-test.js)",
       "Bash(npx playwright install:*)",
       "Bash(npx playwright test:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)"
     ],
     "deny": []
   }

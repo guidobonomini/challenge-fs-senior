@@ -66,17 +66,17 @@ export const getTaskProgressAnalytics = asyncHandler(async (req: AuthRequest, re
   const startDate = new Date();
   
   switch (time_range) {
-    case 'week':
-      startDate.setDate(endDate.getDate() - 7);
-      break;
-    case 'quarter':
-      startDate.setMonth(endDate.getMonth() - 3);
-      break;
-    case 'year':
-      startDate.setFullYear(endDate.getFullYear() - 1);
-      break;
-    default: // month
-      startDate.setMonth(endDate.getMonth() - 1);
+  case 'week':
+    startDate.setDate(endDate.getDate() - 7);
+    break;
+  case 'quarter':
+    startDate.setMonth(endDate.getMonth() - 3);
+    break;
+  case 'year':
+    startDate.setFullYear(endDate.getFullYear() - 1);
+    break;
+  default: // month
+    startDate.setMonth(endDate.getMonth() - 1);
   }
 
   let baseQuery = db('tasks as t')
@@ -217,17 +217,17 @@ export const getVelocityAnalytics = asyncHandler(async (req: AuthRequest, res: R
     const periodStart = new Date(endDate);
     
     switch (period_type) {
-      case 'week':
-        periodStart.setDate(endDate.getDate() - (i + 1) * 7);
-        periodEnd.setDate(endDate.getDate() - i * 7);
-        break;
-      case 'month':
-        periodStart.setMonth(endDate.getMonth() - (i + 1));
-        periodEnd.setMonth(endDate.getMonth() - i);
-        break;
-      default:
-        periodStart.setMonth(endDate.getMonth() - (i + 1));
-        periodEnd.setMonth(endDate.getMonth() - i);
+    case 'week':
+      periodStart.setDate(endDate.getDate() - (i + 1) * 7);
+      periodEnd.setDate(endDate.getDate() - i * 7);
+      break;
+    case 'month':
+      periodStart.setMonth(endDate.getMonth() - (i + 1));
+      periodEnd.setMonth(endDate.getMonth() - i);
+      break;
+    default:
+      periodStart.setMonth(endDate.getMonth() - (i + 1));
+      periodEnd.setMonth(endDate.getMonth() - i);
     }
     
     periodsArray.push({
@@ -334,14 +334,14 @@ export const getTimeTrackingAnalytics = asyncHandler(async (req: AuthRequest, re
   const startDate = new Date();
   
   switch (time_range) {
-    case 'week':
-      startDate.setDate(endDate.getDate() - 7);
-      break;
-    case 'quarter':
-      startDate.setMonth(endDate.getMonth() - 3);
-      break;
-    default: // month
-      startDate.setMonth(endDate.getMonth() - 1);
+  case 'week':
+    startDate.setDate(endDate.getDate() - 7);
+    break;
+  case 'quarter':
+    startDate.setMonth(endDate.getMonth() - 3);
+    break;
+  default: // month
+    startDate.setMonth(endDate.getMonth() - 1);
   }
 
   let query = db('time_entries as te')

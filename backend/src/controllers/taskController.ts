@@ -342,9 +342,9 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
     tasks.map(async (task) => {
       const assignee = task.assignee_id
         ? await db('users')
-            .where('id', task.assignee_id)
-            .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
-            .first()
+          .where('id', task.assignee_id)
+          .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
+          .first()
         : null;
 
       const reporter = await db('users')
@@ -354,9 +354,9 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
 
       const category = task.category_id
         ? await db('categories')
-            .where('id', task.category_id)
-            .select('id', 'name', 'description', 'color')
-            .first()
+          .where('id', task.category_id)
+          .select('id', 'name', 'description', 'color')
+          .first()
         : null;
 
       const commentCount = await db('comments')
@@ -425,9 +425,9 @@ export const getTask = asyncHandler(async (req: AuthRequest, res: Response) => {
 
   const assignee = task.assignee_id
     ? await db('users')
-        .where('id', task.assignee_id)
-        .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
-        .first()
+      .where('id', task.assignee_id)
+      .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
+      .first()
     : null;
 
   const reporter = await db('users')
@@ -437,9 +437,9 @@ export const getTask = asyncHandler(async (req: AuthRequest, res: Response) => {
 
   const category = task.category_id
     ? await db('categories')
-        .where('id', task.category_id)
-        .select('id', 'name', 'description', 'color')
-        .first()
+      .where('id', task.category_id)
+      .select('id', 'name', 'description', 'color')
+      .first()
     : null;
 
   const comments = await db('comments as c')
@@ -691,7 +691,7 @@ export const updateTaskPosition = asyncHandler(async (req: AuthRequest, res: Res
         updated_at: new Date(),
         started_at: status === 'in_progress' && !task.started_at ? new Date() : task.started_at,
         completed_at: status === 'done' && !task.completed_at ? new Date() : 
-                     status !== 'done' ? null : task.completed_at,
+          status !== 'done' ? null : task.completed_at,
       });
   });
 
