@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TaskFilterOptions } from '../components/Filters/TaskFilters';
 import { SortConfig } from '../components/Sorting/SortableColumn';

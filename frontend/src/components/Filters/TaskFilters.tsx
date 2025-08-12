@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { 
-  FunnelIcon, 
-  XMarkIcon, 
+  FunnelIcon,
   MagnifyingGlassIcon,
+  XMarkIcon,
   CalendarIcon,
   UserIcon
 } from '@heroicons/react/24/outline';

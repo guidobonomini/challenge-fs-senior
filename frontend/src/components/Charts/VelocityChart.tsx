@@ -61,8 +61,6 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
     return data.map((_, index) => slope * index + intercept);
   };
 
-  const trendData = calculateTrend();
-
   const chartData = {
     labels: data.map(point => point.period),
     datasets: [

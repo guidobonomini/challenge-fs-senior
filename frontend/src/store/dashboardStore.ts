@@ -60,11 +60,17 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   fetchDashboardData: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Fetch all data in parallel
       const [statsResponse, activitiesResponse] = await Promise.all([
-        useDashboardStore.getState().fetchStats(),
-        useDashboardStore.getState().fetchRecentActivities(),
+        apiService.get<any>('/analytics/stats'),
+        apiService.get<any>('/analytics/activities')
       ]);
+
+      set({
+        stats: (statsResponse as any).stats || {},
+        recentActivities: (activitiesResponse as any).activities || [],
+        isLoading: false,
+        error: null
+      });
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || 'Failed to fetch dashboard data';
       set({ error: errorMessage, isLoading: false });

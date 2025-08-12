@@ -52,8 +52,6 @@ const TasksPage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
-    const socket = socketService.connect(token);
-
     // Join project rooms for all user projects to receive task creation events
     projects.forEach(project => {
       socketService.joinProject(project.id);
@@ -110,7 +108,7 @@ const TasksPage: React.FC = () => {
       });
       socketService.off('task_created', handleTaskCreated);
     };
-  }, [token, projects, selectedProjectId, addTask]);
+  }, [token, projects, selectedProjectId, addTask, updateTaskFromSocket]);
 
   const handleCreateTask = () => {
     setSelectedTask(null);

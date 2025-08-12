@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   PlusIcon,
   PencilIcon,
-  TrashIcon,
+  XMarkIcon,
   TagIcon,
-  SwatchIcon,
   EyeIcon,
   EyeSlashIcon
 } from '@heroicons/react/24/outline';

@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   SparklesIcon,
-  TagIcon,
   CheckCircleIcon,
-  XMarkIcon,
   ExclamationTriangleIcon,
+  ClockIcon,
+  TagIcon,
+  ArrowPathIcon,
   InformationCircleIcon,
-  ArrowPathIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { 
-  SparklesIcon as SparklesIconSolid,
-  CheckCircleIcon as CheckCircleIconSolid
+  SparklesIcon as SparklesIconSolid
 } from '@heroicons/react/24/solid';
-import { aiCategorizationService, TaskCategory, AISuggestion, AIAnalysisResult } from '../../services/aiCategorizationService';
+import { Task } from '../../types';
+import { aiCategorizationService, TaskCategory } from '../../services/aiCategorizationService';
 import LoadingSpinner from '../UI/LoadingSpinner';
 
 interface TaskCategorizationPanelProps {
@@ -29,8 +30,8 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
   className = ''
 }) => {
   const [categories, setCategories] = useState<TaskCategory[]>([]);
-  const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
-  const [primarySuggestion, setPrimarySuggestion] = useState<AISuggestion | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]); // Changed from AISuggestion to any[]
+  const [primarySuggestion, setPrimarySuggestion] = useState<any | null>(null); // Changed from AISuggestion to any
   const [keywordsDetected, setKeywordsDetected] = useState<string[]>([]);
   const [taskDetails, setTaskDetails] = useState<{
     id: string;
@@ -77,7 +78,7 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
     }
   };
 
-  const handleAcceptSuggestion = async (suggestion: AISuggestion) => {
+  const handleAcceptSuggestion = async (suggestion: any) => { // Changed from AISuggestion to any
     setLoading(true);
     try {
       await aiCategorizationService.acceptSuggestion(
@@ -101,7 +102,7 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
     }
   };
 
-  const handleRejectSuggestion = async (suggestion: AISuggestion) => {
+  const handleRejectSuggestion = async (suggestion: any) => { // Changed from AISuggestion to any
     setLoading(true);
     try {
       await aiCategorizationService.rejectSuggestion(

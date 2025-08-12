@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -8,8 +8,9 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  KeyboardSensor
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 import { Task, TaskStatus } from '../../types';
 import { useTaskStore } from '../../store/taskStore';

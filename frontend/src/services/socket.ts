@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import { SocketEvents, Notification } from '../types';
+import { toast } from 'react-hot-toast';
+import { Notification } from '../types';
 
 class SocketService {
   private socket: Socket | null = null;

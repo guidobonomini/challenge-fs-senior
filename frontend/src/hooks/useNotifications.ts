@@ -13,19 +13,19 @@ export const useNotifications = () => {
   }, [fetchNotifications, refreshUnreadCount]);
 
   useEffect(() => {
-    if (!socketService.connected) return;
+    if (socketService) {
+      const handleNewNotification = (notification: any) => {
+        addNotification(notification);
+      };
 
-    const handleNewNotification = (notification: any) => {
-      addNotification(notification);
-    };
+      // Listen for new notifications
+      socketService.on('notification', handleNewNotification);
 
-    // Listen for new notifications
-    socketService.onNewNotification(handleNewNotification);
-
-    return () => {
-      socketService.off('new_notification', handleNewNotification);
-    };
-  }, [socketService.connected, addNotification]);
+      return () => {
+        socketService.off('notification', handleNewNotification);
+      };
+    }
+  }, [socketService]);
 
   return useNotificationStore();
 };

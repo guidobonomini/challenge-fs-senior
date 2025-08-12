@@ -50,9 +50,10 @@ const AttachmentUpload: React.FC<AttachmentUploadProps> = ({
     setUploading(true);
 
     try {
-      const result = await attachmentService.uploadTaskAttachment(taskId, file);
+      const response = await attachmentService.uploadTaskAttachment(taskId, file);
       toast.success(`File "${file.name}" uploaded successfully`);
       onUploadComplete();
+      setUploading(false);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to upload file';
       toast.error(errorMessage);

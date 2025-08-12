@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore, Project } from '../store/projectStore';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, QuestionMarkCircleIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, FolderIcon, QuestionMarkCircleIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import { formatDateSafely } from '../utils/dateUtils';
 import ProjectModal from '../components/Projects/ProjectModal';
 import KeyboardShortcutsModal from '../components/UI/KeyboardShortcutsModal';

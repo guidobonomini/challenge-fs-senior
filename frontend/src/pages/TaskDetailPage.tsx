@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeftIcon, 
-  PencilIcon, 
-  ClockIcon, 
-  UserIcon, 
-  CalendarIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+  ClockIcon,
+  UserIcon,
   FlagIcon,
-  TagIcon 
+  CalendarIcon
 } from '@heroicons/react/24/outline';
-import { useTaskStore } from '../store/taskStore';
 import { Task, TimeEntry } from '../types';
+import { useTaskStore } from '../store/taskStore';
 import TimeTracker from '../components/TimeTracking/TimeTracker';
 import TimeEntryList from '../components/TimeTracking/TimeEntryList';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
@@ -107,7 +107,6 @@ const TaskDetailPage: React.FC = () => {
             onClick={() => navigate('/tasks')}
             className="btn-secondary"
           >
-            <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Back to Tasks
           </button>
         </div>
@@ -124,7 +123,7 @@ const TaskDetailPage: React.FC = () => {
             onClick={() => navigate('/tasks')}
             className="mr-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            <ArrowLeftIcon className="h-5 w-5" />
+            Back to Tasks
           </button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

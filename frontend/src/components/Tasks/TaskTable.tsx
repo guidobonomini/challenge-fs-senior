@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   EyeIcon,
@@ -55,7 +55,6 @@ const TaskTable: React.FC<TaskTableProps> = ({
     setPage,
     setLimit,
     hasActiveFilters,
-    queryParams,
   } = useTableData({
     defaultLimit: 25,
     syncWithUrl: true,

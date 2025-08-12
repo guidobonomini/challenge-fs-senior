@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   HomeIcon,
   RectangleStackIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  BellIcon,
-  UserIcon,
-  Cog6ToothIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChartBarIcon,
   SparklesIcon,
+  FolderIcon,
+  CogIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 import { useSidebarStore } from '../../store/sidebarStore';
 
@@ -25,7 +25,7 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
-  { name: 'Profile', href: '/profile', icon: UserIcon },
+  { name: 'Profile', href: '/profile', icon: FolderIcon },
 ];
 
 const Sidebar: React.FC = () => {

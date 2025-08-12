@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { BellIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationItem from './NotificationItem';
-import { formatDistanceToNow } from 'date-fns';
+import { Notification } from '../../types';
 
 const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAllAsRead } = useNotifications();

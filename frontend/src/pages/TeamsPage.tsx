@@ -6,7 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import TeamModal from '../components/Teams/TeamModal';
 
 const TeamsPage: React.FC = () => {
-  const { teams, currentTeam, isLoading, fetchTeams, deleteTeam, fetchTeam, fetchTeamMembers } = useTeamStore();
+  const { teams, isLoading, error, fetchTeams, fetchTeam, fetchTeamMembers, createTeam, updateTeam, deleteTeam } = useTeamStore();
   const { user } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
