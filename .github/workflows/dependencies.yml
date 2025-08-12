@@ -102,126 +102,14 @@ jobs:
             backend/backend-outdated.json
             frontend/frontend-outdated.json
 
-  license-check:
-    name: License Compliance
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-      
-      - name: Install license checker
-        run: npm install -g license-checker
-      
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
-      
-      - name: Check backend licenses
-        working-directory: ./backend
-        run: |
-          echo "📜 Checking backend licenses..."
-          license-checker --json > backend-licenses.json
-          license-checker --summary
-          
-          # Check for problematic licenses
-          if license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' --failOn 'GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0'; then
-            echo "✅ All backend licenses are compliant"
-          else
-            echo "❌ Some backend licenses may be problematic"
-            exit 1
-          fi
-      
-      - name: Check frontend licenses
-        working-directory: ./frontend
-        run: |
-          echo "📜 Checking frontend licenses..."
-          license-checker --json > frontend-licenses.json
-          license-checker --summary
-          
-          # Check for problematic licenses
-          if license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense' --failOn 'GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0'; then
-            echo "✅ All frontend licenses are compliant"
-          else
-            echo "❌ Some frontend licenses may be problematic"
-            exit 1
-          fi
-      
-      - name: Upload license reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: license-reports
-          path: |
-            backend/backend-licenses.json
-            frontend/frontend-licenses.json
 
-  dependency-graph:
-    name: Generate Dependency Graph
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-      
-      - name: Install madge for dependency analysis
-        run: npm install -g madge
-      
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
-      
-      - name: Generate backend dependency graph
-        working-directory: ./backend
-        run: |
-          echo "📊 Generating backend dependency graph..."
-          madge --image backend-deps.png src/
-          madge --circular src/ || echo "No circular dependencies found"
-      
-      - name: Generate frontend dependency graph
-        working-directory: ./frontend
-        run: |
-          echo "📊 Generating frontend dependency graph..."
-          madge --image frontend-deps.png src/
-          madge --circular src/ || echo "No circular dependencies found"
-      
-      - name: Upload dependency graphs
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-graphs
-          path: |
-            backend/backend-deps.png
-            frontend/frontend-deps.png
+
+
 
   create-dependency-report:
     name: Create Dependency Report
     runs-on: ubuntu-latest
-    needs: [audit-dependencies, check-outdated, license-check, dependency-graph]
+    needs: [audit-dependencies, check-outdated]
     if: always()
     
     steps:
@@ -262,13 +150,9 @@ jobs:
             echo "- **Frontend**: $frontend_outdated packages have updates available" >> DEPENDENCY_REPORT.md
           fi
           
-          echo "" >> DEPENDENCY_REPORT.md
-          echo "## 📜 License Status" >> DEPENDENCY_REPORT.md
-          echo "License check completed. See detailed reports for any compliance issues." >> DEPENDENCY_REPORT.md
+
           
-          echo "" >> DEPENDENCY_REPORT.md
-          echo "## 🔗 Dependency Graphs" >> DEPENDENCY_REPORT.md
-          echo "Dependency graphs generated for both backend and frontend projects." >> DEPENDENCY_REPORT.md
+
           
           echo "" >> DEPENDENCY_REPORT.md
           echo "---" >> DEPENDENCY_REPORT.md

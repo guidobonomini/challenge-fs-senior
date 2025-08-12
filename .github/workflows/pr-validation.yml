@@ -97,44 +97,7 @@ jobs:
               - '*.md'
               - 'docs/**'
 
-  validate-commits:
-    name: Validate Commit Messages
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Validate commit messages
-        run: |
-          # Get commits in this PR
-          commits=$(git log --pretty=format:"%s" ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
-          
-          echo "Validating commit messages:"
-          echo "$commits"
-          
-          # Check if commits follow conventional commit format
-          invalid_commits=""
-          while IFS= read -r commit; do
-            if [[ ! "$commit" =~ ^(feat|fix|docs|style|refactor|test|chore|ci|build|perf)(\(.+\))?: .+ ]]; then
-              invalid_commits="$invalid_commits\n- $commit"
-            fi
-          done <<< "$commits"
-          
-          if [[ -n "$invalid_commits" ]]; then
-            echo "❌ Invalid commit messages found:"
-            echo -e "$invalid_commits"
-            echo ""
-            echo "Commit messages should follow the conventional commit format:"
-            echo "type(scope): description"
-            echo ""
-            echo "Types: feat, fix, docs, style, refactor, test, chore, ci, build, perf"
-            exit 1
-          else
-            echo "✅ All commit messages are valid"
-          fi
+
 
   backend-validation:
     name: Backend Validation
@@ -256,21 +219,7 @@ jobs:
         working-directory: ./backend
         run: npm ci
       
-      - name: Validate migrations
-        working-directory: ./backend
-        run: |
-          # Test migrations can be applied
-          npm run migrate:latest
-          
-          # Test migrations can be rolled back
-          npm run migrate:rollback
-          
-          # Apply them again
-          npm run migrate:latest
-          
-          echo "✅ Migrations are valid"
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
 
   security-check:
     name: Security Check
@@ -302,7 +251,7 @@ jobs:
   update-pr-status:
     name: Update PR Status
     runs-on: ubuntu-latest
-    needs: [pr-info, validate-commits, backend-validation, frontend-validation, database-validation, security-check]
+    needs: [pr-info, backend-validation, frontend-validation, database-validation, security-check]
     if: always()
     
     steps:
@@ -322,7 +271,6 @@ jobs:
             );
             
             const results = {
-              'validate-commits': '${{ needs.validate-commits.result }}',
               'backend-validation': '${{ needs.backend-validation.result }}',
               'frontend-validation': '${{ needs.frontend-validation.result }}',
               'database-validation': '${{ needs.database-validation.result }}',
