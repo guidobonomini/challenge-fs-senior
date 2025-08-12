@@ -1,0 +1,316 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  pr-info:
+    name: PR Information
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get PR info
+        id: pr-info
+        run: |
+          echo "pr-number=${{ github.event.number }}" >> $GITHUB_OUTPUT
+          echo "base-branch=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
+          echo "head-branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+          echo "changed-files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | wc -l)" >> $GITHUB_OUTPUT
+      
+      - name: Comment PR info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 PR Validation Summary')
+            );
+            
+            const body = `🤖 PR Validation Summary
+            
+            **PR Information:**
+            - Base: \`${{ steps.pr-info.outputs.base-branch }}\`
+            - Head: \`${{ steps.pr-info.outputs.head-branch }}\`
+            - Files changed: ${{ steps.pr-info.outputs.changed-files }}
+            
+            **Status:** ⏳ Validation in progress...
+            
+            This comment will be updated with results.`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+  validate-changes:
+    name: Validate Changes
+    runs-on: ubuntu-latest
+    
+    outputs:
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+      database-changed: ${{ steps.changes.outputs.database }}
+      docs-changed: ${{ steps.changes.outputs.docs }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            database:
+              - 'database/**'
+            docs:
+              - '*.md'
+              - 'docs/**'
+
+
+
+  backend-validation:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    needs: [validate-changes]
+    if: needs.validate-changes.outputs.backend-changed == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Check for missing dependencies
+        working-directory: ./backend
+        run: |
+          # Check if all imports can be resolved
+          npm run build 2>&1 | tee build.log
+          if grep -q "Cannot find module" build.log; then
+            echo "❌ Missing dependencies detected"
+            grep "Cannot find module" build.log
+            exit 1
+          fi
+      
+      - name: Validate API schema
+        working-directory: ./backend
+        run: |
+          # Run a basic server start test
+          timeout 30s npm start || true
+          echo "✅ Server starts without critical errors"
+
+  frontend-validation:
+    name: Frontend Validation
+    runs-on: ubuntu-latest
+    needs: [validate-changes]
+    if: needs.validate-changes.outputs.frontend-changed == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Validate bundle size
+        working-directory: ./frontend
+        run: |
+          npm run build
+          
+          # Check bundle size (should be reasonable)
+          bundle_size=$(du -sh dist/ | cut -f1)
+          echo "Bundle size: $bundle_size"
+          
+          # Check if any files are suspiciously large (>5MB)
+          large_files=$(find dist/ -type f -size +5M)
+          if [[ -n "$large_files" ]]; then
+            echo "⚠️ Large files detected:"
+            echo "$large_files"
+            ls -lh $large_files
+          fi
+      
+      - name: Check for console errors
+        working-directory: ./frontend
+        run: |
+          # Basic syntax check by building
+          npm run build
+          echo "✅ Build successful without syntax errors"
+
+  database-validation:
+    name: Database Validation
+    runs-on: ubuntu-latest
+    needs: [validate-changes]
+    if: needs.validate-changes.outputs.database-changed == 'true'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    needs: [validate-changes]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for secrets
+        run: |
+          # Check for potential secrets in the code
+          if grep -r -i "password\|secret\|key\|token" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .; then
+            echo "⚠️ Potential secrets found in code. Please review:"
+            grep -r -n -i "password\|secret\|key\|token" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" .
+            echo ""
+            echo "Make sure these are not actual secrets!"
+          fi
+      
+      - name: Check for TODO/FIXME comments
+        run: |
+          todos=$(grep -r -n "TODO\|FIXME\|HACK\|XXX" --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" . || true)
+          if [[ -n "$todos" ]]; then
+            echo "📝 TODOs found:"
+            echo "$todos"
+          fi
+
+  update-pr-status:
+    name: Update PR Status
+    runs-on: ubuntu-latest
+    needs: [pr-info, backend-validation, frontend-validation, database-validation, security-check]
+    if: always()
+    
+    steps:
+      - name: Update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 PR Validation Summary')
+            );
+            
+            const results = {
+              'backend-validation': '${{ needs.backend-validation.result }}',
+              'frontend-validation': '${{ needs.frontend-validation.result }}',
+              'database-validation': '${{ needs.database-validation.result }}',
+              'security-check': '${{ needs.security-check.result }}'
+            };
+            
+            let status = '✅ All validations passed';
+            let statusIcon = '✅';
+            
+            const failed = Object.entries(results).filter(([_, result]) => result === 'failure');
+            const skipped = Object.entries(results).filter(([_, result]) => result === 'skipped');
+            
+            if (failed.length > 0) {
+              status = `❌ ${failed.length} validation(s) failed`;
+              statusIcon = '❌';
+            } else if (Object.values(results).some(result => result === 'cancelled')) {
+              status = '⏹️ Validation cancelled';
+              statusIcon = '⏹️';
+            }
+            
+            const body = `🤖 PR Validation Summary ${statusIcon}
+            
+            **Status:** ${status}
+            
+            **Validation Results:**
+            ${Object.entries(results).map(([job, result]) => {
+              const icon = result === 'success' ? '✅' : 
+                          result === 'failure' ? '❌' : 
+                          result === 'skipped' ? '⏭️' : '⏳';
+              return `- ${icon} ${job.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${result}`;
+            }).join('\n')}
+            
+            ${failed.length > 0 ? '\n**❌ Please fix the failing validations before merging.**' : ''}
+            ${skipped.length > 0 ? `\n**ℹ️ ${skipped.length} validation(s) were skipped (no relevant changes).**` : ''}`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            }

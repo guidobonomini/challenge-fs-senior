@@ -1,0 +1,222 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Custom focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900;
+}
+
+/* Card animations */
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+}
+
+/* Button base styles */
+.btn-base {
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply btn-base bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
+}
+
+.btn-secondary {
+  @apply btn-base bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700;
+}
+
+.btn-danger {
+  @apply btn-base bg-error-600 text-white hover:bg-error-700 active:bg-error-800;
+}
+
+.btn-success {
+  @apply btn-base bg-success-600 text-white hover:bg-success-700 active:bg-success-800;
+}
+
+/* Input styles */
+.input-base {
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus-ring dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder-gray-300;
+}
+
+/* Priority colors */
+.priority-low {
+  @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200;
+}
+
+.priority-medium {
+  @apply bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200;
+}
+
+.priority-high {
+  @apply bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200;
+}
+
+.priority-urgent {
+  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+}
+
+/* Status colors */
+.status-todo {
+  @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200;
+}
+
+.status-in-progress {
+  @apply bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200;
+}
+
+.status-in-review {
+  @apply bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200;
+}
+
+.status-done {
+  @apply bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200;
+}
+
+.status-cancelled {
+  @apply bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200;
+}
+
+/* Kanban columns */
+.kanban-column {
+  @apply bg-gray-50 dark:bg-gray-800 min-h-96 max-h-screen p-3 rounded-lg transition-colors duration-200;
+}
+
+.kanban-card {
+  @apply bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 cursor-pointer transition-all duration-200 hover:shadow-md;
+}
+
+.kanban-card-dragging {
+  @apply opacity-50 transform rotate-2 scale-105 shadow-lg;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply animate-spin rounded-full border-2 border-gray-200 border-t-primary-600;
+}
+
+/* Custom animations */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
+  }
+  40%,
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.33);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Dark mode specific styles */
+.dark {
+  color-scheme: dark;
+}
+
+/* Notification badge */
+.notification-badge {
+  @apply absolute -top-1 -right-1 h-3 w-3 bg-error-500 rounded-full animate-pulse-ring;
+}
+
+/* Ensure page dropdowns don't overlap header */
+main select {
+  position: relative !important;
+  z-index: 1 !important;
+  max-height: 200px;
+}
+
+/* Header has high z-index but below modals */
+header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  isolation: isolate;
+}
+
+/* Modals have the highest z-index */
+.modal-portal {
+  z-index: 99999 !important;
+}
+
+/* Optimistic update states */
+.optimistic-update {
+  opacity: 0.7;
+  position: relative;
+}
+
+.optimistic-update::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%);
+  animation: shimmer 1.5s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.optimistic-creating {
+  border: 2px dashed rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.optimistic-updating {
+  border: 2px dashed rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.optimistic-deleting {
+  border: 2px dashed rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+  opacity: 0.5;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
