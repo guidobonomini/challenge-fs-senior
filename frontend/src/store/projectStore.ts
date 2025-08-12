@@ -9,7 +9,7 @@ export interface Project {
   team_id: string;
   owner_id: string;
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   start_date: string;
   due_date: string;
   progress: number;
@@ -32,7 +32,7 @@ interface CreateProjectData {
   description?: string;
   team_id: string;
   status?: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority?: 'low' | 'medium' | 'high' | 'critical';
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   start_date?: string;
   due_date?: string;
   color?: string;

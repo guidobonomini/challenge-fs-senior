@@ -88,11 +88,11 @@ class AuthService {
     return apiService.get<{ user: User }>('/auth/profile');
   }
 
-  async updateProfile(data: ProfileUpdateData): Promise<ApiResponse<{ user: User }>> {
-    const response = await apiService.put<ApiResponse<{ user: User }>>('/auth/profile', data);
+  async updateProfile(data: ProfileUpdateData): Promise<{ user: User; message: string }> {
+    const response = await apiService.put<{ user: User; message: string }>('/auth/profile', data);
     
-    if (response.data?.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
     }
     
     return response;

@@ -7,6 +7,7 @@ export interface DashboardStats {
     completed: number;
     inProgress: number;
     overdue: number;
+    todo: number;
   };
   projectStats: {
     total: number;
@@ -72,40 +73,51 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   fetchStats: async () => {
     try {
-      // Fetch tasks stats
-      const tasksResponse = await apiService.get<any>('/tasks', { limit: 1 });
-      const projectsResponse = await apiService.get<any>('/projects', { limit: 1 });
-      const teamsResponse = await apiService.get<any>('/teams', { limit: 1 });
-
-      // Calculate task stats from tasks
-      const allTasksResponse = await apiService.get<any>('/tasks', { limit: 100 });
-      const tasks = allTasksResponse.tasks || [];
-      
       const now = new Date();
+
+      // Fetch task counts by status using API pagination totals for accurate counts
+      const [allTasksResponse, todoTasksResponse, inProgressTasksResponse, doneTasksResponse] = await Promise.all([
+        apiService.get<any>('/tasks', { limit: 1 }),
+        apiService.get<any>('/tasks', { limit: 1, status: 'todo' }),
+        apiService.get<any>('/tasks', { limit: 1, status: 'in_progress' }),
+        apiService.get<any>('/tasks', { limit: 1, status: 'done' }),
+      ]);
+
+      // Get a reasonable sample of tasks to calculate overdue count (fallback)
+      const sampleTasksResponse = await apiService.get<any>('/tasks', { limit: 100 });
+      const sampleTasks = sampleTasksResponse.tasks || [];
+      const overdueCount = sampleTasks.filter((t: any) => {
+        if (t.due_date && t.status !== 'done') {
+          return new Date(t.due_date) < now;
+        }
+        return false;
+      }).length;
+
       const taskStats = {
-        total: tasks.length,
-        completed: tasks.filter((t: any) => t.status === 'done').length,
-        inProgress: tasks.filter((t: any) => t.status === 'in_progress').length,
-        overdue: tasks.filter((t: any) => {
-          if (t.due_date && t.status !== 'done') {
-            return new Date(t.due_date) < now;
-          }
-          return false;
-        }).length,
+        total: allTasksResponse.pagination?.total || 0,
+        completed: doneTasksResponse.pagination?.total || 0,
+        inProgress: inProgressTasksResponse.pagination?.total || 0,
+        todo: todoTasksResponse.pagination?.total || 0,
+        overdue: overdueCount, // This is approximate based on sample, ideally would need separate API endpoint
       };
 
-      // Calculate project stats
-      const allProjectsResponse = await apiService.get<any>('/projects', { limit: 100 });
-      const projects = allProjectsResponse.projects || [];
-      
+      // Fetch project counts by status
+      const [allProjectsResponse, activeProjectsResponse, completedProjectsResponse, onHoldProjectsResponse] = await Promise.all([
+        apiService.get<any>('/projects', { limit: 1 }),
+        apiService.get<any>('/projects', { limit: 1, status: 'active' }),
+        apiService.get<any>('/projects', { limit: 1, status: 'completed' }),
+        apiService.get<any>('/projects', { limit: 1, status: 'on_hold' }),
+      ]);
+
       const projectStats = {
-        total: projects.length,
-        active: projects.filter((p: any) => p.status === 'active').length,
-        completed: projects.filter((p: any) => p.status === 'completed').length,
-        onHold: projects.filter((p: any) => p.status === 'on_hold').length,
+        total: allProjectsResponse.pagination?.total || 0,
+        active: activeProjectsResponse.pagination?.total || 0,
+        completed: completedProjectsResponse.pagination?.total || 0,
+        onHold: onHoldProjectsResponse.pagination?.total || 0,
       };
 
       // Calculate team stats
+      const teamsResponse = await apiService.get<any>('/teams', { limit: 1 });
       const teamStats = {
         totalTeams: teamsResponse.pagination?.total || 0,
         totalMembers: teamsResponse.teams?.reduce((acc: number, team: any) => 
@@ -125,7 +137,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       // Set default stats on error
       set({
         stats: {
-          taskStats: { total: 0, completed: 0, inProgress: 0, overdue: 0 },
+          taskStats: { total: 0, completed: 0, inProgress: 0, overdue: 0, todo: 0 },
           projectStats: { total: 0, active: 0, completed: 0, onHold: 0 },
           teamStats: { totalTeams: 0, totalMembers: 0 },
         },

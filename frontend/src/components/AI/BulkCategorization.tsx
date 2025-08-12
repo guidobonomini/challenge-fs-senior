@@ -32,8 +32,11 @@ const BulkCategorization: React.FC<BulkCategorizationProps> = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleBulkCategorize = async () => {
+    // Close confirmation dialog immediately and show progress
+    setShowConfirmation(false);
     setIsRunning(true);
     setProgress(null);
+    console.log('Starting bulk categorization for project:', projectId);
     
     try {
       const result = await aiCategorizationService.bulkCategorizeProject(
@@ -41,10 +44,12 @@ const BulkCategorization: React.FC<BulkCategorizationProps> = ({
         acceptSuggestions
       );
       
+      console.log('Bulk categorization result:', result);
+      
       setProgress({
         processed: result.processed,
         categorized: result.categorized,
-        message: result.message
+        message: result.message || 'Bulk categorization completed'
       });
       
       onCompleted?.(result.processed, result.categorized);
@@ -56,8 +61,8 @@ const BulkCategorization: React.FC<BulkCategorizationProps> = ({
         message: 'Failed to complete bulk categorization'
       });
     } finally {
+      console.log('Bulk categorization finished, setting isRunning to false');
       setIsRunning(false);
-      setShowConfirmation(false);
     }
   };
 

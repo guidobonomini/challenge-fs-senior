@@ -65,15 +65,15 @@ export const uploadTaskAttachment = asyncHandler(async (req: AuthRequest, res: R
   // Check if user has access to the task
   let task;
   if (userRole === 'admin') {
+    // Admins can access all non-archived tasks
     task = await db('tasks as t')
       .join('projects as p', 't.project_id', 'p.id')
-      .join('teams as team', 'p.team_id', 'team.id')
       .where('t.id', taskId)
       .where('t.is_archived', false)
-      .where('team.is_active', true)
       .select('t.*', 'p.name as project_name')
       .first();
   } else {
+    // Regular users need to be team members
     task = await db('tasks as t')
       .join('projects as p', 't.project_id', 'p.id')
       .join('team_members as tm', 'p.team_id', 'tm.team_id')
@@ -97,19 +97,17 @@ export const uploadTaskAttachment = asyncHandler(async (req: AuthRequest, res: R
     .insert({
       id: attachmentId,
       task_id: taskId,
-      user_id: userId,
+      uploaded_by: userId,
       filename: req.file.filename,
-      original_filename: req.file.originalname,
+      original_name: req.file.originalname,
       mime_type: req.file.mimetype,
       file_size: req.file.size,
       file_path: req.file.path,
-      file_url: fileUrl,
       created_at: new Date(),
-      updated_at: new Date(),
     })
     .returning([
-      'id', 'task_id', 'filename', 'original_filename', 
-      'mime_type', 'file_size', 'file_url', 'created_at'
+      'id', 'task_id', 'filename', 'original_name', 
+      'mime_type', 'file_size', 'created_at'
     ]);
 
   // Get uploader info
@@ -160,6 +158,8 @@ export const uploadTaskAttachment = asyncHandler(async (req: AuthRequest, res: R
     message: 'File uploaded successfully',
     attachment: {
       ...attachment,
+      file_url: fileUrl,
+      original_filename: attachment.original_name,
       uploader,
     },
   });
@@ -173,15 +173,14 @@ export const getTaskAttachments = asyncHandler(async (req: AuthRequest, res: Res
   // Check if user has access to the task
   let hasAccess = false;
   if (userRole === 'admin') {
-    const task = await db('tasks as t')
-      .join('projects as p', 't.project_id', 'p.id')
-      .join('teams as team', 'p.team_id', 'team.id')
-      .where('t.id', taskId)
-      .where('t.is_archived', false)
-      .where('team.is_active', true)
+    // Admins can access all non-archived tasks
+    const task = await db('tasks')
+      .where('id', taskId)
+      .where('is_archived', false)
       .first();
     hasAccess = !!task;
   } else {
+    // Regular users need to be team members
     const task = await db('tasks as t')
       .join('projects as p', 't.project_id', 'p.id')
       .join('team_members as tm', 'p.team_id', 'tm.team_id')
@@ -197,11 +196,11 @@ export const getTaskAttachments = asyncHandler(async (req: AuthRequest, res: Res
   }
 
   const attachments = await db('attachments as a')
-    .join('users as u', 'a.user_id', 'u.id')
+    .join('users as u', 'a.uploaded_by', 'u.id')
     .where('a.task_id', taskId)
     .select(
-      'a.id', 'a.task_id', 'a.filename', 'a.original_filename',
-      'a.mime_type', 'a.file_size', 'a.file_url', 'a.created_at',
+      'a.id', 'a.task_id', 'a.filename', 'a.original_name',
+      'a.mime_type', 'a.file_size', 'a.file_path', 'a.created_at',
       'u.id as uploader_id', 'u.first_name', 'u.last_name', 'u.email', 'u.avatar_url'
     )
     .orderBy('a.created_at', 'desc');
@@ -210,10 +209,10 @@ export const getTaskAttachments = asyncHandler(async (req: AuthRequest, res: Res
     id: attachment.id,
     task_id: attachment.task_id,
     filename: attachment.filename,
-    original_filename: attachment.original_filename,
+    original_filename: attachment.original_name,
     mime_type: attachment.mime_type,
     file_size: attachment.file_size,
-    file_url: attachment.file_url,
+    file_url: `/api/attachments/${attachment.id}/download`,
     created_at: attachment.created_at,
     uploader: {
       id: attachment.uploader_id,
@@ -300,7 +299,7 @@ export const deleteAttachment = asyncHandler(async (req: AuthRequest, res: Respo
 
   // Check permissions - only uploader, admins, or team managers can delete
   let canDelete = false;
-  if (userRole === 'admin' || attachment.user_id === userId) {
+  if (userRole === 'admin' || attachment.uploaded_by === userId) {
     canDelete = true;
   } else {
     // Check if user is team manager

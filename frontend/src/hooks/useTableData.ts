@@ -77,9 +77,6 @@ export const useTableData = (options: UseTableDataOptions = {}): UseTableDataRet
     const priorityParam = searchParams.get(`${urlPrefix}priority`);
     if (priorityParam) filters.priority = priorityParam.split(',') as any;
 
-    const typeParam = searchParams.get(`${urlPrefix}type`);
-    if (typeParam) filters.type = typeParam.split(',') as any;
-
     const assigneeParam = searchParams.get(`${urlPrefix}assignee`);
     if (assigneeParam) filters.assignee_id = assigneeParam.split(',');
 
@@ -106,12 +103,6 @@ export const useTableData = (options: UseTableDataOptions = {}): UseTableDataRet
 
     const isOverdueParam = searchParams.get(`${urlPrefix}is_overdue`);
     if (isOverdueParam) filters.is_overdue = isOverdueParam === 'true';
-
-    const storyPointsMinParam = searchParams.get(`${urlPrefix}story_points_min`);
-    if (storyPointsMinParam) filters.story_points_min = parseInt(storyPointsMinParam, 10);
-
-    const storyPointsMaxParam = searchParams.get(`${urlPrefix}story_points_max`);
-    if (storyPointsMaxParam) filters.story_points_max = parseInt(storyPointsMaxParam, 10);
 
     // Parse sort from URL
     let sort: SortConfig | null = defaultSort || null;

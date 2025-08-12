@@ -7,7 +7,7 @@ import {
   UserIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
-import { Task, Priority, TaskStatus, TaskType } from '../../types';
+import { Task, Priority, TaskStatus } from '../../types';
 import TaskFilters, { TaskFilterOptions } from '../Filters/TaskFilters';
 import Pagination, { PaginationData } from '../Pagination/Pagination';
 import SortableColumn, { SortConfig } from '../Sorting/SortableColumn';
@@ -80,9 +80,13 @@ const TaskTable: React.FC<TaskTableProps> = ({
     updateSort(field, direction);
   };
 
-  const getPriorityColor = (priority: Priority): string => {
+  const getPriorityColor = (priority: Priority | undefined | null): string => {
+    if (!priority) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+    
     switch (priority) {
-      case 'critical':
+      case 'urgent':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case 'high':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
@@ -95,7 +99,11 @@ const TaskTable: React.FC<TaskTableProps> = ({
     }
   };
 
-  const getStatusColor = (status: TaskStatus): string => {
+  const getStatusColor = (status: TaskStatus | undefined | null): string => {
+    if (!status) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+    
     switch (status) {
       case 'todo':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
@@ -112,29 +120,10 @@ const TaskTable: React.FC<TaskTableProps> = ({
     }
   };
 
-  const getTypeColor = (type: TaskType): string => {
-    switch (type) {
-      case 'bug':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'feature':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'epic':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-      default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-    }
-  };
-
-  const formatTimeEstimate = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    if (hours > 0) {
-      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-    }
-    return `${remainingMinutes}m`;
-  };
-
   const formatCreatedDate = (dateString: string): string => {
+    if (!dateString || isNaN(Date.parse(dateString))) {
+      return 'Invalid date';
+    }
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
@@ -143,7 +132,7 @@ const TaskTable: React.FC<TaskTableProps> = ({
     const base = ['title', 'status', 'priority'];
     
     if (!compact) {
-      base.push('type', 'assignee', 'project', 'due_date', 'created_at');
+      base.push('assignee', 'project', 'due_date', 'created_at');
     }
     
     if (showActions) {
@@ -229,16 +218,6 @@ const TaskTable: React.FC<TaskTableProps> = ({
                   />
                 )}
                 
-                {visibleColumns.includes('type') && (
-                  <SortableColumn
-                    title="Type"
-                    field="type"
-                    currentSort={sort}
-                    onSort={handleSort}
-                    className="text-center"
-                    width="100px"
-                  />
-                )}
                 
                 {visibleColumns.includes('assignee') && (
                   <SortableColumn
@@ -314,15 +293,10 @@ const TaskTable: React.FC<TaskTableProps> = ({
                             </p>
                           )}
                           <div className="flex items-center space-x-4 mt-1">
-                            {task.story_points && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
-                                {task.story_points} SP
-                              </span>
-                            )}
-                            {task.time_estimate && (
+                            {task.estimated_hours && (
                               <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                                 <ClockIcon className="h-3 w-3 mr-1" />
-                                {formatTimeEstimate(task.time_estimate)}
+                                {task.estimated_hours}h
                               </div>
                             )}
                             {(task.comment_count ?? 0) > 0 && (
@@ -344,7 +318,7 @@ const TaskTable: React.FC<TaskTableProps> = ({
                   {visibleColumns.includes('status') && (
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        {task.status ? task.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
                       </span>
                     </td>
                   )}
@@ -352,18 +326,11 @@ const TaskTable: React.FC<TaskTableProps> = ({
                   {visibleColumns.includes('priority') && (
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                        {task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 'Unknown'}
                       </span>
                     </td>
                   )}
                   
-                  {visibleColumns.includes('type') && (
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(task.type)}`}>
-                        {task.type.charAt(0).toUpperCase() + task.type.slice(1)}
-                      </span>
-                    </td>
-                  )}
                   
                   {visibleColumns.includes('assignee') && (
                     <td className="px-6 py-4">

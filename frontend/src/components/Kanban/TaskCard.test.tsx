@@ -37,8 +37,7 @@ describe('TaskCard', () => {
       title: 'Test Task',
       description: 'Test description',
       priority: 'high' as const,
-      type: 'bug' as const,
-      story_points: 5,
+      estimated_hours: 5,
     };
 
     renderTaskCard(task);
@@ -49,17 +48,11 @@ describe('TaskCard', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('should display correct type icon', () => {
-    renderTaskCard({ type: 'bug' });
-    
-    // Bug type should show 🐛 icon
-    expect(screen.getByText('🐛')).toBeInTheDocument();
-  });
 
   it('should display priority with correct styling', () => {
-    renderTaskCard({ priority: 'critical' });
+    renderTaskCard({ priority: 'urgent' });
     
-    const priorityElement = screen.getByText('critical');
+    const priorityElement = screen.getByText('urgent');
     expect(priorityElement).toBeInTheDocument();
     expect(priorityElement).toHaveClass('bg-red-100', 'text-red-800');
   });
@@ -177,31 +170,13 @@ describe('TaskCard', () => {
     expect(screen.queryByText(/Test User/)).not.toBeInTheDocument();
   });
 
-  it('should handle different task types correctly', () => {
-    const { rerender } = renderTaskCard({ type: 'feature' });
-    expect(screen.getByText('✨')).toBeInTheDocument();
-
-    rerender(
-      <BrowserRouter>
-        <TaskCard task={createMockTask({ type: 'epic' })} />
-      </BrowserRouter>
-    );
-    expect(screen.getByText('🎯')).toBeInTheDocument();
-
-    rerender(
-      <BrowserRouter>
-        <TaskCard task={createMockTask({ type: 'task' })} />
-      </BrowserRouter>
-    );
-    expect(screen.getByText('📋')).toBeInTheDocument();
-  });
 
   it('should handle different priority levels', () => {
     const priorities = [
       { priority: 'low', expectedClass: 'bg-gray-100' },
       { priority: 'medium', expectedClass: 'bg-yellow-100' },
       { priority: 'high', expectedClass: 'bg-orange-100' },
-      { priority: 'critical', expectedClass: 'bg-red-100' },
+      { priority: 'urgent', expectedClass: 'bg-red-100' },
     ];
 
     priorities.forEach(({ priority, expectedClass }) => {

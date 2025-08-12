@@ -47,7 +47,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this comment?')) {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
       return;
     }
 

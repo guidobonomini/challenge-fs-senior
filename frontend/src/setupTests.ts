@@ -134,6 +134,7 @@ jest.mock('./config/sentry', () => ({
   initSentry: jest.fn(),
 }));
 
+
 // Mock @sentry/react
 jest.mock('@sentry/react', () => ({
   init: jest.fn(),

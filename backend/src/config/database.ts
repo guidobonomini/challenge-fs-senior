@@ -16,11 +16,11 @@ const config = {
       max: 10,
     },
     migrations: {
-      directory: './database/migrations',
+      directory: '../database/migrations',
       tableName: 'knex_migrations',
     },
     seeds: {
-      directory: './database/seeds',
+      directory: '../database/seeds',
     },
   },
   production: {
@@ -45,24 +45,15 @@ const config = {
     },
   },
   test: {
-    client: 'postgresql',
-    connection: {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME || 'taskmanagement_test',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-    },
-    pool: {
-      min: 2,
-      max: 10,
-    },
+    client: 'sqlite3',
+    connection: ':memory:',
+    useNullAsDefault: true,
     migrations: {
-      directory: './database/migrations',
+      directory: '../database/migrations',
       tableName: 'knex_migrations',
     },
     seeds: {
-      directory: './database/seeds',
+      directory: '../database/seeds',
     },
   },
 };

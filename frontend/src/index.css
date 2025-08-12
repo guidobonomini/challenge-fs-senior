@@ -85,7 +85,7 @@ code {
   @apply bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200;
 }
 
-.priority-critical {
+.priority-urgent {
   @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
 }
 

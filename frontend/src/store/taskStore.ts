@@ -145,13 +145,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       reporter_id: '', // Will be set by backend
       status: data.status || 'todo',
       priority: data.priority || 'medium',
-      type: data.type || 'task',
-      story_points: data.story_points,
-      time_estimate: data.time_estimate,
-      time_spent: 0,
+      estimated_hours: data.estimated_hours,
+      actual_hours: data.actual_hours || 0,
       due_date: data.due_date,
       position: 0,
-      parent_task_id: data.parent_task_id,
       is_archived: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -175,8 +172,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // Replace optimistic task with real one
       set((state) => ({
         tasks: state.tasks.map(task => 
-          task.id === optimisticTask.id && response.data?.task 
-            ? { ...response.data.task, _optimistic: false }
+          task.id === optimisticTask.id && response.task 
+            ? { ...response.task, _optimistic: false }
             : task
         ),
         isLoading: false,
@@ -200,53 +197,74 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const originalState = get();
     const originalTask = originalState.tasks.find(task => task.id === id);
     
-    if (!originalTask) {
-      throw new Error('Task not found');
+    // If task is not in store, we can still update it in the backend
+    // Only do optimistic update if task exists in store
+    if (originalTask) {
+      // Optimistic update: Update task immediately
+      set((state) => ({
+        tasks: state.tasks.map(task => 
+          task.id === id 
+            ? { ...task, ...data, updated_at: new Date().toISOString(), _optimistic: true }
+            : task
+        ),
+        currentTask: state.currentTask?.id === id 
+          ? { ...state.currentTask, ...data, updated_at: new Date().toISOString(), _optimistic: true }
+          : state.currentTask,
+        isLoading: true,
+        error: null,
+      }));
+    } else {
+      // Task not in store, just set loading state
+      set((state) => ({
+        isLoading: true,
+        error: null,
+      }));
     }
-
-    // Optimistic update: Update task immediately
-    set((state) => ({
-      tasks: state.tasks.map(task => 
-        task.id === id 
-          ? { ...task, ...data, updated_at: new Date().toISOString(), _optimistic: true }
-          : task
-      ),
-      currentTask: state.currentTask?.id === id 
-        ? { ...state.currentTask, ...data, updated_at: new Date().toISOString(), _optimistic: true }
-        : state.currentTask,
-      isLoading: true,
-      error: null,
-    }));
 
     try {
       const response = await taskService.updateTask(id, data);
       
-      // Replace optimistic update with server response
-      set((state) => ({
-        tasks: state.tasks.map(task => 
-          task.id === id && response.data?.task 
-            ? { ...response.data.task, _optimistic: false } 
-            : task
-        ),
-        currentTask: state.currentTask?.id === id && response.data?.task
-          ? { ...response.data.task, _optimistic: false }
-          : state.currentTask,
-        isLoading: false,
-      }));
+      // Replace optimistic update with server response or just update loading state
+      if (originalTask) {
+        set((state) => ({
+          tasks: state.tasks.map(task => 
+            task.id === id && response.task 
+              ? { ...response.task, _optimistic: false } 
+              : task
+          ),
+          currentTask: state.currentTask?.id === id && response.task
+            ? { ...response.task, _optimistic: false }
+            : state.currentTask,
+          isLoading: false,
+        }));
+      } else {
+        // Task wasn't in store, just update loading state
+        set((state) => ({
+          isLoading: false,
+        }));
+      }
 
       toast.success('Task updated successfully');
     } catch (error: any) {
-      // Rollback optimistic update on error
-      set((state) => ({
-        tasks: state.tasks.map(task => 
-          task.id === id ? { ...originalTask, _optimistic: false } : task
-        ),
-        currentTask: state.currentTask?.id === id 
-          ? { ...originalTask, _optimistic: false }
-          : state.currentTask,
-        error: error.response?.data?.error || 'Failed to update task',
-        isLoading: false,
-      }));
+      // Rollback optimistic update on error (only if task was in store)
+      if (originalTask) {
+        set((state) => ({
+          tasks: state.tasks.map(task => 
+            task.id === id ? { ...originalTask, _optimistic: false } : task
+          ),
+          currentTask: state.currentTask?.id === id 
+            ? { ...originalTask, _optimistic: false }
+            : state.currentTask,
+          error: error.response?.data?.error || 'Failed to update task',
+          isLoading: false,
+        }));
+      } else {
+        // Task wasn't in store, just update error state
+        set((state) => ({
+          error: error.response?.data?.error || 'Failed to update task',
+          isLoading: false,
+        }));
+      }
       toast.error('Failed to update task');
       throw error;
     }

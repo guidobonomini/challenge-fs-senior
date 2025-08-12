@@ -1,212 +1,165 @@
-import axios from 'axios';
 import { analyticsService } from './analyticsService';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock the api service
+jest.mock('./api', () => ({
+  default: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    patch: jest.fn(),
+  },
+}));
+
+import apiService from './api';
+const mockedApiService = apiService as jest.Mocked<typeof apiService>;
 
 describe('AnalyticsService', () => {
   beforeEach(() => {
-    mockedAxios.get.mockClear();
+    jest.clearAllMocks();
   });
 
   describe('getTaskStatusAnalytics', () => {
     it('should fetch task status analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: {
-            todo: 5,
-            in_progress: 3,
-            in_review: 2,
-            done: 10,
-            cancelled: 1,
-          },
-        },
+      const mockData = {
+        todo: 5,
+        in_progress: 3,
+        in_review: 2,
+        done: 10,
+        cancelled: 1,
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedApiService.get.mockResolvedValue(mockData);
 
       const result = await analyticsService.getTaskStatusAnalytics();
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/task-status?'
-      );
-      expect(result).toEqual(mockResponse.data.data);
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/task-status', {});
+      expect(result).toEqual(mockData);
     });
 
     it('should include project and team filters', async () => {
-      const mockResponse = { data: { data: {} } };
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      const mockData = {};
+      mockedApiService.get.mockResolvedValue(mockData);
 
       await analyticsService.getTaskStatusAnalytics('project-1', 'team-1');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/task-status?project_id=project-1&team_id=team-1'
-      );
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/task-status', {
+        project_id: 'project-1',
+        team_id: 'team-1'
+      });
     });
   });
 
   describe('getTaskProgressAnalytics', () => {
     it('should fetch task progress analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: [
-            {
-              date: '2023-01-01',
-              completed: 5,
-              total: 10,
-              completionRate: 50.0,
-            },
-          ],
+      const mockData = [
+        {
+          date: '2023-01-01',
+          completed: 5,
+          total: 10,
+          completionRate: 50.0,
         },
-      };
+      ];
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedApiService.get.mockResolvedValue(mockData);
 
       const result = await analyticsService.getTaskProgressAnalytics();
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/task-progress?time_range=month'
-      );
-      expect(result).toEqual(mockResponse.data.data);
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/task-progress', {
+        time_range: 'month'
+      });
+      expect(result).toEqual(mockData);
     });
 
     it('should include time range parameter', async () => {
-      const mockResponse = { data: { data: [] } };
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      const mockData = [];
+      mockedApiService.get.mockResolvedValue(mockData);
 
       await analyticsService.getTaskProgressAnalytics(undefined, undefined, 'week');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/task-progress?time_range=week'
-      );
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/task-progress', {
+        time_range: 'week'
+      });
     });
   });
 
   describe('getTeamWorkloadAnalytics', () => {
     it('should fetch team workload analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: [
-            {
-              user_id: 'user-1',
-              first_name: 'John',
-              last_name: 'Doe',
-              total_tasks: 10,
-              active_tasks: 5,
-              high_priority_tasks: 2,
-              overdue_tasks: 1,
-              workload_score: 8,
-            },
-          ],
+      const mockData = [
+        {
+          user_id: 'user-1',
+          first_name: 'John',
+          last_name: 'Doe',
+          total_tasks: 10,
+          active_tasks: 5,
+          high_priority_tasks: 2,
+          overdue_tasks: 1,
+          workload_score: 8,
         },
-      };
+      ];
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedApiService.get.mockResolvedValue(mockData);
 
       const result = await analyticsService.getTeamWorkloadAnalytics('team-1');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/team-workload/team-1'
-      );
-      expect(result).toEqual(mockResponse.data.data);
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/team-workload/team-1');
+      expect(result).toEqual(mockData);
     });
   });
 
   describe('getVelocityAnalytics', () => {
     it('should fetch velocity analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: [
-            {
-              period: 'Sprint 1',
-              planned: 10,
-              completed: 8,
-              storyPoints: 25,
-            },
-          ],
+      const mockData = [
+        {
+          period: 'Sprint 1',
+          planned: 10,
+          completed: 8,
+          storyPoints: 25,
         },
-      };
+      ];
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedApiService.get.mockResolvedValue(mockData);
 
       const result = await analyticsService.getVelocityAnalytics('team-1');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/velocity/team-1?period_type=sprint&periods=6'
-      );
-      expect(result).toEqual(mockResponse.data.data);
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/velocity/team-1', {
+        period_type: 'sprint',
+        periods: 6
+      });
+      expect(result).toEqual(mockData);
     });
 
     it('should include custom parameters', async () => {
-      const mockResponse = { data: { data: [] } };
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      const mockData = [];
+      mockedApiService.get.mockResolvedValue(mockData);
 
       await analyticsService.getVelocityAnalytics('team-1', 'week', 10);
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/velocity/team-1?period_type=week&periods=10'
-      );
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/velocity/team-1', {
+        period_type: 'week',
+        periods: 10
+      });
     });
   });
 
-  describe('getBurndownAnalytics', () => {
-    it('should fetch burndown analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: [
-            {
-              date: '2023-01-01',
-              remaining: 20,
-              ideal: 18,
-              actual: 15,
-            },
-          ],
-        },
-      };
-
-      mockedAxios.get.mockResolvedValue(mockResponse);
-
-      const result = await analyticsService.getBurndownAnalytics('project-1');
-
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/burndown/project-1?'
-      );
-      expect(result).toEqual(mockResponse.data.data);
-    });
-
-    it('should include sprint filter', async () => {
-      const mockResponse = { data: { data: [] } };
-      mockedAxios.get.mockResolvedValue(mockResponse);
-
-      await analyticsService.getBurndownAnalytics('project-1', 'sprint-1');
-
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/burndown/project-1?sprint_id=sprint-1'
-      );
-    });
-  });
+  // getBurndownAnalytics method was removed - tests commented out
+  // describe('getBurndownAnalytics', () => { ... });
 
   describe('getPriorityDistributionAnalytics', () => {
     it('should fetch priority distribution analytics', async () => {
-      const mockResponse = {
-        data: {
-          data: {
-            low: 5,
-            medium: 10,
-            high: 8,
-            critical: 2,
-          },
-        },
+      const mockData = {
+        low: 5,
+        medium: 10,
+        high: 8,
+        urgent: 2,
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedApiService.get.mockResolvedValue(mockData);
 
       const result = await analyticsService.getPriorityDistributionAnalytics();
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'http://localhost:8000/api/analytics/priority-distribution?'
-      );
-      expect(result).toEqual(mockResponse.data.data);
+      expect(mockedApiService.get).toHaveBeenCalledWith('/analytics/priority-distribution', {});
+      expect(result).toEqual(mockData);
     });
   });
 

@@ -182,6 +182,100 @@ docker-compose up
 
 All containers should start with a single `docker-compose up` command and be accessible via localhost with clear port documentation.
 
+### Build Optimization
+
+For faster Docker builds, several optimization strategies are implemented:
+
+#### Quick Start Commands
+```bash
+# Fast optimized build
+make build-fast
+
+# Development with hot reload (Linux/macOS)
+make up-dev
+
+# Development for Windows (if file sharing issues)
+make up-dev-windows
+
+# Production build
+make build && make up
+
+# Clean and rebuild everything
+make rebuild
+```
+
+#### Windows Users - Directory Sharing Fix
+If you encounter "user declined directory sharing" error:
+
+1. **Enable File Sharing in Docker Desktop:**
+   - Open Docker Desktop → Settings → Resources → File Sharing
+   - Add your project directory
+   - Apply & Restart
+
+2. **Alternative - Use Windows-specific development mode:**
+   ```bash
+   # No volume mounting required
+   docker-compose -f docker-compose.dev.windows.yml up -d
+   
+   # Or use make
+   make up-dev-windows
+   ```
+
+3. **Run the fix script:**
+   ```bash
+   scripts/fix-windows-docker.bat
+   ```
+
+#### Docker Cache Import Errors
+If you encounter "importing cache manifest" errors:
+
+1. **Build without cache first:**
+   ```bash
+   make build-no-cache
+   # OR
+   docker-compose build --no-cache
+   ```
+
+2. **Use cache fix command:**
+   ```bash
+   make fix-cache
+   ```
+
+3. **Alternative - Build services individually:**
+   ```bash
+   docker-compose build backend
+   docker-compose build frontend
+   ```
+
+#### Build Performance Features
+- **BuildKit enabled** for parallel builds and advanced caching
+- **Multi-stage Dockerfiles** with optimized layer caching  
+- **npm cache mounting** to persist dependencies between builds
+- **Selective file copying** to minimize rebuild triggers
+- **Parallel service builds** using Docker Compose `--parallel` flag
+- **Reduced build context** via comprehensive `.dockerignore` files
+- **Health check optimization** with faster intervals for development
+
+#### Development Mode
+```bash
+# Start development environment with hot reload
+docker-compose -f docker-compose.dev.yml up -d
+
+# Or use make command
+make up-dev
+```
+
+The development setup includes:
+- Volume mounting for source code hot reload
+- Optimized health checks for faster startup
+- Separated node_modules volumes for performance
+- Reduced dependencies for development containers
+
+#### Build Scripts
+- `scripts/build-optimized.sh` - Linux/macOS optimized build
+- `scripts/build-optimized.bat` - Windows optimized build
+- `Makefile` - Cross-platform build targets
+
 ## Sample User Stories
 1. As a team member, I want to see all my assigned tasks in a dashboard
 2. As a manager, I want to create projects and assign tasks to team members

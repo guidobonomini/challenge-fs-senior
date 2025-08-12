@@ -236,18 +236,18 @@ export class NotificationService {
   }> {
     const offset = (page - 1) * limit;
     
-    let query = db('notifications').where('user_id', userId);
-    
+    let baseQuery = db('notifications').where('user_id', userId);
     if (unreadOnly) {
-      query = query.where('is_read', false);
+      baseQuery = baseQuery.where('is_read', false);
     }
 
-    const notifications = await query
+    const notifications = await baseQuery
+      .clone()
       .orderBy('created_at', 'desc')
       .limit(limit)
       .offset(offset);
 
-    const [{ count }] = await query.count('* as count');
+    const [{ count }] = await baseQuery.clone().count('* as count');
     const [{ count: unreadCount }] = await db('notifications')
       .where({ user_id: userId, is_read: false })
       .count('* as count');

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTeamStore, Team } from '../store/teamStore';
+import { useAuthStore } from '../store/authStore';
 import { PlusIcon, PencilIcon, TrashIcon, UserGroupIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
 import TeamModal from '../components/Teams/TeamModal';
 
 const TeamsPage: React.FC = () => {
   const { teams, currentTeam, isLoading, fetchTeams, deleteTeam, fetchTeam, fetchTeamMembers } = useTeamStore();
+  const { user } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -150,8 +152,8 @@ const TeamsPage: React.FC = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-2">
-                    {/* Only show edit button for admins and managers */}
-                    {(team.member_role === 'admin' || team.member_role === 'manager') && (
+                    {/* Show edit button for global admins or team admins/managers */}
+                    {(user?.role === 'admin' || team.member_role === 'admin' || team.member_role === 'manager') && (
                       <button
                         onClick={() => handleEditTeam(team)}
                         className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
@@ -167,8 +169,8 @@ const TeamsPage: React.FC = () => {
                     >
                       <Cog6ToothIcon className="h-4 w-4" />
                     </button>
-                    {/* Only show delete button for team admins */}
-                    {team.member_role === 'admin' && (
+                    {/* Show delete button for global admins or team admins */}
+                    {(user?.role === 'admin' || team.member_role === 'admin') && (
                       <button
                         onClick={() => handleDeleteTeam(team.id)}
                         className={`p-2 rounded-md transition-colors ${

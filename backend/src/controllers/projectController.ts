@@ -272,17 +272,29 @@ export const getProject = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const updateProject = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
+  const userRole = req.user!.role;
   const { id } = req.params;
   const updateData = req.body;
 
-  const project = await db('projects as p')
-    .join('team_members as tm', 'p.team_id', 'tm.team_id')
-    .where('p.id', id)
-    .where('tm.user_id', userId)
-    .whereIn('tm.role', ['admin', 'manager'])
-    .where('p.is_archived', false)
-    .select('p.*')
-    .first();
+  let project;
+
+  // Global administrators can update any project
+  if (userRole === 'admin') {
+    project = await db('projects')
+      .where('id', id)
+      .where('is_archived', false)
+      .first();
+  } else {
+    // Regular users need team admin/manager permissions
+    project = await db('projects as p')
+      .join('team_members as tm', 'p.team_id', 'tm.team_id')
+      .where('p.id', id)
+      .where('tm.user_id', userId)
+      .whereIn('tm.role', ['admin', 'manager'])
+      .where('p.is_archived', false)
+      .select('p.*')
+      .first();
+  }
 
   if (!project) {
     throw createError('Project not found or insufficient permissions', 404);
@@ -306,16 +318,28 @@ export const updateProject = asyncHandler(async (req: AuthRequest, res: Response
 
 export const deleteProject = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
+  const userRole = req.user!.role;
   const { id } = req.params;
 
-  const project = await db('projects as p')
-    .join('team_members as tm', 'p.team_id', 'tm.team_id')
-    .where('p.id', id)
-    .where('tm.user_id', userId)
-    .where('tm.role', 'admin')
-    .where('p.is_archived', false)
-    .select('p.*')
-    .first();
+  let project;
+
+  // Global administrators can delete any project
+  if (userRole === 'admin') {
+    project = await db('projects')
+      .where('id', id)
+      .where('is_archived', false)
+      .first();
+  } else {
+    // Regular users need team admin permissions
+    project = await db('projects as p')
+      .join('team_members as tm', 'p.team_id', 'tm.team_id')
+      .where('p.id', id)
+      .where('tm.user_id', userId)
+      .where('tm.role', 'admin')
+      .where('p.is_archived', false)
+      .select('p.*')
+      .first();
+  }
 
   if (!project) {
     throw createError('Project not found or insufficient permissions', 404);

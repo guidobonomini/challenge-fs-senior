@@ -29,7 +29,26 @@
       "Bash(npm test:*)",
       "Bash(npx knex migrate:make:*)",
       "Bash(npx knex migrate:latest:*)",
-      "Bash(del 20250809044930_create_attachments_table.js)"
+      "Bash(del 20250809044930_create_attachments_table.js)",
+      "Bash(winpty docker run --rm -it challenge-fs-senior-migrate ls -la /app/database)",
+      "Bash(npm run dev:*)",
+      "Bash(npx knex seed:make:*)",
+      "Bash(npx knex seed:run:*)",
+      "Bash(chmod:*)",
+      "Bash(cmd /c:*)",
+      "Bash(wmic process where ProcessId=134320 delete:*)",
+      "Bash(wmic process where ProcessId=133872 delete:*)",
+      "Bash(for file in *.ts)",
+      "Bash(do mv \"$file\" \"$file%.ts.js\")",
+      "Bash(done)",
+      "Bash(k6:*)",
+      "Bash(winget install:*)",
+      "Bash(choco install:*)",
+      "Bash(unzip:*)",
+      "Bash(./k6-v1.1.0-windows-amd64/k6.exe run smoke-test.js)",
+      "Bash(npx playwright install:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(npx jest:*)"
     ],
     "deny": []
   }

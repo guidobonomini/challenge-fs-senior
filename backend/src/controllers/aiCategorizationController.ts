@@ -5,72 +5,6 @@ import { aiCategorizationService } from '../services/aiCategorizationService';
 import { logger } from '../utils/logger';
 import db from '../config/database';
 
-export const getCategories = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const categories = await aiCategorizationService.getCategories();
-  
-  res.json({
-    categories
-  });
-});
-
-export const createCategory = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-  const userRole = req.user!.role;
-  
-  // Only admins and managers can create categories
-  if (userRole !== 'admin' && userRole !== 'manager') {
-    throw createError('Insufficient permissions to create categories', 403);
-  }
-
-  const {
-    name,
-    description,
-    color = '#6b7280',
-    icon = 'tag',
-    sort_order = 0
-  } = req.body;
-
-  if (!name) {
-    throw createError('Category name is required', 400);
-  }
-
-  const category = await aiCategorizationService.createCategory({
-    name,
-    description,
-    color,
-    icon,
-    is_system: false, // User-created categories are not system categories
-    sort_order,
-    is_active: true
-  });
-
-  logger.info('Category created by user:', { categoryId: category.id, userId });
-
-  res.status(201).json({
-    message: 'Category created successfully',
-    category
-  });
-});
-
-export const updateCategory = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-  const userRole = req.user!.role;
-  const { id } = req.params;
-
-  // Only admins and managers can update categories
-  if (userRole !== 'admin' && userRole !== 'manager') {
-    throw createError('Insufficient permissions to update categories', 403);
-  }
-
-  const category = await aiCategorizationService.updateCategory(id, req.body);
-
-  logger.info('Category updated by user:', { categoryId: id, userId });
-
-  res.json({
-    message: 'Category updated successfully',
-    category
-  });
-});
 
 export const analyzeTask = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
@@ -103,11 +37,34 @@ export const analyzeTask = asyncHandler(async (req: AuthRequest, res: Response) 
     throw createError('Task not found or access denied', 404);
   }
 
-  const analysis = await aiCategorizationService.analyzeTaskContent(
-    task.title,
-    task.description,
-    task.type
-  );
+  let analysis;
+
+  // If task is already categorized, return empty analysis instead of generating new suggestions
+  if (task.category_id) {
+    analysis = {
+      suggestions: [],
+      primary_suggestion: null,
+      keywords_detected: [],
+      analysis_timestamp: new Date().toISOString(),
+      model_version: 'v1.0'
+    };
+  } else {
+    // Only analyze and save suggestions for uncategorized tasks
+    analysis = await aiCategorizationService.analyzeTaskContent(
+      task.title,
+      task.description
+    );
+
+    // Save suggestions to database for later acceptance
+    if (analysis.suggestions.length > 0) {
+      await db('tasks')
+        .where('id', id)
+        .update({
+          ai_suggested_categories: JSON.stringify(analysis.suggestions),
+          updated_at: new Date()
+        });
+    }
+  }
 
   logger.info('Task analyzed for categorization:', { taskId: id, userId });
 
@@ -117,7 +74,6 @@ export const analyzeTask = asyncHandler(async (req: AuthRequest, res: Response) 
       id: task.id,
       title: task.title,
       description: task.description,
-      type: task.type,
       current_category_id: task.category_id
     }
   });
@@ -293,9 +249,8 @@ export const manualCategorization = asyncHandler(async (req: AuthRequest, res: R
 
   // If category_id is provided, verify it exists
   if (category_id) {
-    const category = await db('task_categories')
+    const category = await db('categories')
       .where('id', category_id)
-      .where('is_active', true)
       .first();
       
     if (!category) {
@@ -323,13 +278,13 @@ export const bulkCategorizeProject = asyncHandler(async (req: AuthRequest, res: 
   // Check if user has access to the project
   let projectAccess;
   if (userRole === 'admin') {
-    projectAccess = await db('projects as p')
-      .join('teams as t', 'p.team_id', 't.id')
-      .where('p.id', project_id)
-      .where('p.is_archived', false)
-      .where('t.is_active', true)
+    // Admins can access all non-archived projects
+    projectAccess = await db('projects')
+      .where('id', project_id)
+      .where('is_archived', false)
       .first();
   } else {
+    // Regular users need to be team members
     projectAccess = await db('projects as p')
       .join('team_members as tm', 'p.team_id', 'tm.team_id')
       .where('p.id', project_id)
@@ -440,7 +395,9 @@ export const getTasksWithSuggestions = asyncHandler(async (req: AuthRequest, res
       't.id',
       't.title',
       't.description',
-      't.type',
+      't.priority',
+      't.estimated_hours',
+      't.due_date',
       't.ai_suggested_categories',
       't.created_at',
       'p.name as project_name',
@@ -505,4 +462,31 @@ export const getTasksWithSuggestions = asyncHandler(async (req: AuthRequest, res
       pages: Math.ceil(Number(count) / Number(limit))
     }
   });
+});
+
+export const getCategories = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page = 1, limit = 100 } = req.query;
+  const offset = (Number(page) - 1) * Number(limit);
+
+  try {
+    const categories = await aiCategorizationService.getCategories();
+    
+    // Apply pagination
+    const total = categories.length;
+    const paginatedCategories = categories.slice(offset, offset + Number(limit));
+    const pages = Math.ceil(total / Number(limit));
+
+    res.json({
+      categories: paginatedCategories,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages,
+      },
+    });
+  } catch (error) {
+    logger.error('Get AI categories error:', error);
+    throw createError('Failed to fetch categories', 500);
+  }
 });

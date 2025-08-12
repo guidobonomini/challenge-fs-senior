@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   UserIcon,
   KeyIcon,
@@ -18,6 +18,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { toast } from 'react-hot-toast';
+import { authService } from '../services/auth';
 
 const ProfilePage: React.FC = () => {
   const { user, updateProfile } = useAuthStore();
@@ -53,6 +54,17 @@ const ProfilePage: React.FC = () => {
     weekly_digest: false,
   });
 
+  // Sync form data with updated user data
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
+
   const [preferenceSettings, setPreferenceSettings] = useState({
     default_task_view: 'kanban' as 'kanban' | 'list' | 'calendar',
     items_per_page: 25,
@@ -63,6 +75,23 @@ const ProfilePage: React.FC = () => {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load saved settings from localStorage
+  useEffect(() => {
+    try {
+      const savedNotifications = localStorage.getItem('notification_settings');
+      if (savedNotifications) {
+        setNotificationSettings(JSON.parse(savedNotifications));
+      }
+      
+      const savedPreferences = localStorage.getItem('user_preferences');
+      if (savedPreferences) {
+        setPreferenceSettings(JSON.parse(savedPreferences));
+      }
+    } catch (error) {
+      console.error('Failed to load saved settings:', error);
+    }
+  }, []);
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: UserIcon },
@@ -102,22 +131,54 @@ const ProfilePage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Implement password change API call
+      await authService.changePassword({
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
+      });
       toast.success('Password changed successfully');
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (error) {
-      toast.error('Failed to change password');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to change password';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // TODO: Implement avatar upload logic
-      console.log('Uploading avatar:', file);
-      toast.success('Avatar upload feature coming soon!');
+    if (!file) return;
+    
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB');
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // For now, show a preview and save locally
+      // TODO: Implement actual file upload to server
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        // Update profile with new avatar URL
+        updateProfile({ avatar_url: dataUrl });
+      };
+      reader.readAsDataURL(file);
+      
+      toast.success('Avatar updated successfully');
+    } catch (error) {
+      toast.error('Failed to upload avatar');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -131,7 +192,8 @@ const ProfilePage: React.FC = () => {
   const saveNotificationSettings = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implement notification settings save
+      // Save to localStorage for now
+      localStorage.setItem('notification_settings', JSON.stringify(notificationSettings));
       toast.success('Notification settings saved');
     } catch (error) {
       toast.error('Failed to save notification settings');
@@ -143,7 +205,8 @@ const ProfilePage: React.FC = () => {
   const savePreferences = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implement preferences save
+      // Save to localStorage for now
+      localStorage.setItem('user_preferences', JSON.stringify(preferenceSettings));
       toast.success('Preferences saved');
     } catch (error) {
       toast.error('Failed to save preferences');

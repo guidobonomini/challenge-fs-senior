@@ -12,6 +12,20 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      paramsSerializer: {
+        serialize: (params) => {
+          const searchParams = new URLSearchParams();
+          Object.entries(params).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              // Send arrays as comma-separated values
+              searchParams.set(key, value.join(','));
+            } else if (value !== undefined && value !== null) {
+              searchParams.set(key, String(value));
+            }
+          });
+          return searchParams.toString();
+        }
+      }
     });
 
     this.setupInterceptors();
@@ -72,8 +86,8 @@ class ApiService {
     return response.data;
   }
 
-  async post<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.post(url, data);
+  async post<T>(url: string, data?: any, config?: { timeout?: number }): Promise<T> {
+    const response = await this.client.post(url, data, config);
     return response.data;
   }
 
@@ -109,6 +123,14 @@ class ApiService {
       },
     });
 
+    return response.data;
+  }
+
+  // File download as blob
+  async getBlob(url: string): Promise<Blob> {
+    const response = await this.client.get(url, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 

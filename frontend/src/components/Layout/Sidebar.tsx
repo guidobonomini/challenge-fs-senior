@@ -22,7 +22,6 @@ const navigation = [
   { name: 'Teams', href: '/teams', icon: UserGroupIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'AI Categorization', href: '/ai-categorization', icon: SparklesIcon },
-  { name: 'Notifications', href: '/notifications', icon: BellIcon },
 ];
 
 const secondaryNavigation = [

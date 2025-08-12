@@ -18,7 +18,10 @@ import commentRoutes from './routes/comments';
 import userRoutes from './routes/users';
 import attachmentRoutes from './routes/attachments';
 import assignmentRoutes from './routes/assignments';
+import categoryRoutes from './routes/categories';
 import aiCategorizationRoutes from './routes/aiCategorization';
+import analyticsRoutes from './routes/analytics';
+import notificationRoutes from './routes/notifications';
 
 import SocketManager from './socket/socketManager';
 import NotificationService from './services/notificationService';
@@ -53,7 +56,10 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/attachments', attachmentRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/ai', aiCategorizationRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const socketManager = new SocketManager(server);
 const notificationService = new NotificationService(socketManager);
@@ -66,8 +72,13 @@ app.use(errorHandler);
 
 const startServer = async (): Promise<void> => {
   try {
-    await connectRedis();
-    logger.info('Redis connected successfully');
+    // Try to connect to Redis but don't fail if it's not available
+    try {
+      await connectRedis();
+      logger.info('Redis connected successfully');
+    } catch (redisError) {
+      logger.warn('Redis connection failed, continuing without Redis:', redisError);
+    }
 
     const port = process.env.PORT || 8000;
     server.listen(port, () => {

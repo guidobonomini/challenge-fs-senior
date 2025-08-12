@@ -270,15 +270,15 @@ describe('useTableData', () => {
 
     act(() => {
       result.current.updateFilters({ 
-        story_points_min: 1,
-        story_points_max: 8,
+        search: 'test query',
+        status: ['todo'],
       });
     });
 
     expect(result.current.hasActiveFilters).toBe(true);
     
     const queryParams = result.current.queryParams;
-    expect(queryParams.story_points_min).toBe('1');
-    expect(queryParams.story_points_max).toBe('8');
+    expect(queryParams.search).toBe('test query');
+    expect(queryParams.status).toEqual(['todo']);
   });
 });

@@ -1,22 +1,27 @@
 # Multi-stage build for Node.js backend
 FROM node:18-alpine AS base
+# Install system dependencies
+RUN apk add --no-cache libc6-compat
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+COPY backend/package.json backend/package-lock.json* ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production
 
 # Build the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY backend/package.json backend/package-lock.json* ./
+RUN --mount=type=cache,target=/root/.npm npm ci
 
-COPY . .
+# Copy source code
+COPY backend/src ./src
+COPY backend/tsconfig.json ./
+COPY backend/knexfile.js ./
 RUN npm run build
 
 # Production image, copy all the files and run the app
@@ -31,9 +36,11 @@ RUN adduser --system --uid 1001 nodejs
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/knexfile.js ./
-COPY --from=builder --chown=nodejs:nodejs /app/database ./database
 COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+
+# Copy database directory from build context (root level)
+COPY --chown=nodejs:nodejs database ./database
 
 # Create logs directory
 RUN mkdir -p logs && chown nodejs:nodejs logs

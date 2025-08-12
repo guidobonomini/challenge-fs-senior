@@ -110,7 +110,6 @@ const SavedSearches: React.FC<SavedSearchesProps> = ({
     if (filters.search) parts.push(`"${filters.search}"`);
     if (filters.status?.length) parts.push(`Status: ${filters.status.join(', ')}`);
     if (filters.priority?.length) parts.push(`Priority: ${filters.priority.join(', ')}`);
-    if (filters.type?.length) parts.push(`Type: ${filters.type.join(', ')}`);
     if (filters.assignee_id?.length) parts.push(`Assignees: ${filters.assignee_id.length}`);
     if (filters.project_id?.length) parts.push(`Projects: ${filters.project_id.length}`);
     if (filters.due_date_from || filters.due_date_to) {

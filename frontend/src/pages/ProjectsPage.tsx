@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore, Project } from '../store/projectStore';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, QuestionMarkCircleIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDateSafely } from '../utils/dateUtils';
 import ProjectModal from '../components/Projects/ProjectModal';
 import KeyboardShortcutsModal from '../components/UI/KeyboardShortcutsModal';
 import ExportModal from '../components/Export/ExportModal';
@@ -59,7 +59,7 @@ const ProjectsPage: React.FC = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical':
+      case 'urgent':
         return 'bg-red-500';
       case 'high':
         return 'bg-orange-500';
@@ -223,7 +223,7 @@ const ProjectsPage: React.FC = () => {
                 )}
 
                 <div className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-                  Created {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
+                  Created {formatDateSafely(project.created_at, { addSuffix: true }, 'date not available')}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -249,7 +249,7 @@ const ProjectsPage: React.FC = () => {
                   </div>
                   {project.due_date && (
                     <div className="text-xs text-gray-500 dark:text-gray-500">
-                      Due {formatDistanceToNow(new Date(project.due_date), { addSuffix: true })}
+                      Due {formatDateSafely(project.due_date, { addSuffix: true }, 'date not set')}
                     </div>
                   )}
                 </div>

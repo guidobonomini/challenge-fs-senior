@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDateSafely } from '../utils/dateUtils';
 
 const DashboardPage: React.FC = () => {
   const { stats, recentActivities, isLoading, fetchDashboardData } = useDashboardStore();
@@ -56,24 +56,24 @@ const DashboardPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Stats Cards */}
+        {/* Stats Cards - Reordered: To Do, In Progress, Completed, Overdue */}
         <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path>
                   </svg>
                 </div>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Completed Tasks
+                    To Do Tasks
                   </dt>
                   <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                    {stats?.taskStats.completed || 0}
+                    {stats?.taskStats.todo || 0}
                   </dd>
                 </dl>
               </div>
@@ -109,6 +109,30 @@ const DashboardPage: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                    Completed Tasks
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                    {stats?.taskStats.completed || 0}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
@@ -122,30 +146,6 @@ const DashboardPage: React.FC = () => {
                   </dt>
                   <dd className="text-lg font-medium text-gray-900 dark:text-white">
                     {stats?.taskStats.overdue || 0}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                    Team Members
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                    {stats?.teamStats.totalMembers || 0}
                   </dd>
                 </dl>
               </div>
@@ -176,7 +176,7 @@ const DashboardPage: React.FC = () => {
                       {activity.description}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                      {formatDateSafely(activity.timestamp, { addSuffix: true }, 'Time not available')}
                     </p>
                   </div>
                 </div>

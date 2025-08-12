@@ -42,7 +42,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical':
+      case 'urgent':
         return 'bg-red-500';
       case 'high':
         return 'bg-orange-500';
@@ -80,8 +80,6 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
       )}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center space-x-3">
-          <span className="capitalize">{task.type}</span>
-          {task.story_points && <span>{task.story_points} pts</span>}
           {task.assignee && <span>@{task.assignee.first_name}</span>}
           {!selectedProjectId && task.project_name && (
             <span className="text-primary-600 dark:text-primary-400 font-medium">

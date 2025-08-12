@@ -19,9 +19,13 @@ const AICategorizationPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  const { projects } = useProjectStore();
+  const { projects, fetchProjects } = useProjectStore();
   const selectedProjectId = searchParams.get('project');
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
@@ -260,10 +264,10 @@ const AICategorizationPage: React.FC = () => {
               </p>
             </div>
             <TaskCategorizationPanel
-              taskId="990e8400-e29b-41d4-a716-446655441002"
+              taskId="cbc234ef-9041-43fd-b2aa-c3b612d9d867"
               onCategorized={() => {
                 // Refresh the page to show updated stats
-                window.location.reload();
+                handleRefresh();
               }}
             />
           </div>

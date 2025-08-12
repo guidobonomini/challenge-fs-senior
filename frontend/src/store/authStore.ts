@@ -41,6 +41,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await authService.login(credentials);
           
+          // Set token in localStorage for API service
+          localStorage.setItem('token', response.token);
+          
           set({
             user: response.user,
             token: response.token,
@@ -67,6 +70,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authService.register(userData);
+          
+          // Set token in localStorage for API service
+          localStorage.setItem('token', response.token);
           
           set({
             user: response.user,
@@ -114,6 +120,10 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const response = await authService.refreshToken();
+          
+          // Set token in localStorage for API service
+          localStorage.setItem('token', response.token);
+          
           set({
             token: response.token,
             error: null,
@@ -130,7 +140,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.updateProfile(data as any);
           
           set((state) => ({
-            user: response.data?.user ? { ...state.user!, ...response.data.user } : state.user,
+            user: response.user ? { ...state.user!, ...response.user } : state.user,
             isLoading: false,
             error: null,
           }));
@@ -163,9 +173,16 @@ export const useAuthStore = create<AuthState>()(
           
           if (isAuthenticated) {
             const profileResponse = await authService.getProfile();
+            const token = authService.getToken();
+            
+            // Ensure token is in localStorage for API service
+            if (token) {
+              localStorage.setItem('token', token);
+            }
+            
             set({
               user: profileResponse.user,
-              token: authService.getToken(),
+              token: token,
               isAuthenticated: true,
               isLoading: false,
               isInitialized: true,

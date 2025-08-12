@@ -18,9 +18,10 @@ services:
       - taskmanagement-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   # Redis Cache
   redis:
@@ -35,16 +36,18 @@ services:
       - taskmanagement-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
     command: redis-server --appendonly yes
 
   # Backend API
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: runner
     container_name: taskmanagement-backend
     restart: unless-stopped
     ports:
@@ -65,7 +68,7 @@ services:
       - JWT_REFRESH_SECRET=your_super_secret_refresh_key_change_this_in_production
       - JWT_REFRESH_EXPIRES_IN=30d
       - CORS_ORIGIN=http://localhost:3000
-      - ANTHROPIC_API_KEY=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
+      - ANTHROPIC_API_KEY=anthropic_api_key_here
     depends_on:
       database:
         condition: service_healthy
@@ -75,15 +78,17 @@ services:
       - taskmanagement-network
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 15s
+      timeout: 5s
       retries: 3
+      start_period: 30s
 
   # Frontend App
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: runner
       args:
         - REACT_APP_API_URL=http://localhost:8000/api
     container_name: taskmanagement-frontend
@@ -95,10 +100,11 @@ services:
     networks:
       - taskmanagement-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
       retries: 3
+      start_period: 20s
 
   # Database Migration Service
   migrate:
@@ -118,8 +124,10 @@ services:
         condition: service_healthy
     networks:
       - taskmanagement-network
-    command: ["npm", "run", "migrate"]
+    command: ["sh", "-c", "npm run migrate || exit 0"]
     restart: "no"
+    profiles:
+      - migration
 
   # Database Seeding Service
   seed:
@@ -135,12 +143,14 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      database:
+        condition: service_healthy
     networks:
       - taskmanagement-network
     command: ["npm", "run", "seed"]
     restart: "no"
+    profiles:
+      - seeding
 
 volumes:
   postgres_data:

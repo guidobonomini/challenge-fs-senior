@@ -1,9 +1,6 @@
 import express from 'express';
 import { authenticate as auth } from '../middleware/auth';
 import {
-  getCategories,
-  createCategory,
-  updateCategory,
   analyzeTask,
   categorizeTask,
   acceptSuggestion,
@@ -11,7 +8,8 @@ import {
   manualCategorization,
   bulkCategorizeProject,
   getCategorizationStats,
-  getTasksWithSuggestions
+  getTasksWithSuggestions,
+  getCategories
 } from '../controllers/aiCategorizationController';
 
 const router = express.Router();
@@ -19,10 +17,8 @@ const router = express.Router();
 // Apply authentication to all routes
 router.use(auth);
 
-// Category management routes
+// Categories
 router.get('/categories', getCategories);
-router.post('/categories', createCategory);
-router.put('/categories/:id', updateCategory);
 
 // Task categorization routes
 router.get('/tasks/:id/analyze', analyzeTask);

@@ -26,10 +26,8 @@ export const config = {
   thresholds: {
     // HTTP errors should be less than 1%
     http_req_failed: ['rate<0.01'],
-    // 95% of requests should complete within 2 seconds
-    http_req_duration: ['p(95)<2000'],
-    // Average response time should be less than 500ms
-    http_req_duration_avg: ['avg<500'],
+    // 95% of requests should complete within 2 seconds and average < 500ms
+    http_req_duration: ['p(95)<2000', 'avg<500'],
     // Check success rate
     checks: ['rate>0.9'],
   },

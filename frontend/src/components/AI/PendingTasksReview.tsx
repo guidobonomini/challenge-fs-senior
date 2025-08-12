@@ -4,9 +4,11 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   SparklesIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  CalendarIcon,
+  FlagIcon
 } from '@heroicons/react/24/outline';
-import { aiCategorizationService, TaskWithSuggestions, AISuggestion } from '../../services/aiCategorizationService';
+import { aiCategorizationService, TaskWithSuggestions, AISuggestion, TaskCategory } from '../../services/aiCategorizationService';
 import LoadingSpinner from '../UI/LoadingSpinner';
 import Pagination from '../Pagination/Pagination';
 
@@ -22,6 +24,7 @@ const PendingTasksReview: React.FC<PendingTasksReviewProps> = ({
   className = ''
 }) => {
   const [tasks, setTasks] = useState<TaskWithSuggestions[]>([]);
+  const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -34,7 +37,17 @@ const PendingTasksReview: React.FC<PendingTasksReviewProps> = ({
 
   useEffect(() => {
     loadTasks();
+    loadCategories();
   }, [projectId, pagination.page]);
+
+  const loadCategories = async () => {
+    try {
+      const data = await aiCategorizationService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
 
   const loadTasks = async () => {
     setLoading(true);
@@ -109,6 +122,37 @@ const PendingTasksReview: React.FC<PendingTasksReviewProps> = ({
         {label} ({Math.round(confidence * 100)}%)
       </span>
     );
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'text-red-600 dark:text-red-400';
+      case 'high':
+        return 'text-orange-600 dark:text-orange-400';
+      case 'medium':
+        return 'text-yellow-600 dark:text-yellow-400';
+      case 'low':
+        return 'text-green-600 dark:text-green-400';
+      default:
+        return 'text-gray-600 dark:text-gray-400';
+    }
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    const colorClass = getPriorityColor(priority);
+    return (
+      <div className="flex items-center space-x-1">
+        <FlagIcon className={`h-3 w-3 ${colorClass}`} />
+        <span className={`text-xs font-medium ${colorClass}`}>
+          {priority.charAt(0).toUpperCase() + priority.slice(1)}
+        </span>
+      </div>
+    );
+  };
+
+  const getCategoryDetails = (categoryId: string) => {
+    return categories.find(cat => cat.id === categoryId);
   };
 
   if (loading) {
@@ -187,12 +231,37 @@ const PendingTasksReview: React.FC<PendingTasksReviewProps> = ({
                         </p>
                       )}
                       
-                      <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex items-center flex-wrap gap-3 mt-2">
+                        {getPriorityBadge(task.priority)}
+                        
+                        {task.due_date && (
+                          <div className="flex items-center space-x-1">
+                            <CalendarIcon className={`h-3 w-3 ${
+                              new Date(task.due_date) < new Date() 
+                                ? 'text-red-500' 
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`} />
+                            <span className={`text-xs ${
+                              new Date(task.due_date) < new Date()
+                                ? 'text-red-600 dark:text-red-400 font-medium'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`}>
+                              Due {new Date(task.due_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {task.estimated_hours && (
+                          <div className="flex items-center space-x-1">
+                            <ClockIcon className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {task.estimated_hours}h estimated
+                            </span>
+                          </div>
+                        )}
+                        
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Type: {task.type}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Created: {new Date(task.created_at).toLocaleDateString()}
+                          Created {new Date(task.created_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -220,9 +289,25 @@ const PendingTasksReview: React.FC<PendingTasksReviewProps> = ({
                         </div>
                       </div>
                       
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 ml-6">
-                        {primarySuggestion.reasoning}
-                      </p>
+                      <div className="mt-2 ml-6 space-y-2">
+                        {(() => {
+                          const categoryDetails = getCategoryDetails(primarySuggestion.category_id);
+                          return categoryDetails?.description && (
+                            <div className="bg-white dark:bg-gray-800 rounded px-2 py-1 border border-purple-200 dark:border-purple-700">
+                              <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Category Description:</span>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                {categoryDetails.description}
+                              </p>
+                            </div>
+                          );
+                        })()}
+                        <div className="bg-white dark:bg-gray-800 rounded px-2 py-1 border border-purple-200 dark:border-purple-700">
+                          <span className="text-xs font-medium text-purple-700 dark:text-purple-300">AI Reasoning:</span>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            {primarySuggestion.reasoning}
+                          </p>
+                        </div>
+                      </div>
                       
                       <div className="flex items-center space-x-2 mt-3 ml-6">
                         <button

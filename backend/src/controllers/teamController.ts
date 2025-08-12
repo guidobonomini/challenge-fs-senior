@@ -56,17 +56,25 @@ export const getTeams = asyncHandler(async (req: AuthRequest, res: Response) => 
   // Global administrators can see all teams
   if (userRole === 'admin') {
     teams = await db('teams as t')
+      .leftJoin('team_members as tm', 't.id', 'tm.team_id')
+      .leftJoin('projects as p', function() {
+        this.on('t.id', '=', 'p.team_id').andOn('p.is_archived', '=', db.raw('false'));
+      })
       .where('t.is_active', true)
+      .groupBy('t.id', 't.name', 't.description', 't.owner_id', 't.avatar_url', 't.created_at', 't.updated_at')
       .select(
         't.id',
         't.name',
         't.description',
         't.owner_id',
         't.avatar_url',
+        't.is_active',
         't.created_at',
         't.updated_at',
-        db.raw('null as member_role'),
-        db.raw('null as joined_at')
+        db.raw('\'admin\' as member_role'),
+        db.raw('null as joined_at'),
+        db.raw('COUNT(DISTINCT tm.id) as member_count'),
+        db.raw('COUNT(DISTINCT p.id) as project_count')
       )
       .orderBy('t.created_at', 'desc')
       .limit(Number(limit))
@@ -80,18 +88,26 @@ export const getTeams = asyncHandler(async (req: AuthRequest, res: Response) => 
     // Regular users only see teams they're members of
     teams = await db('teams as t')
       .join('team_members as tm', 't.id', 'tm.team_id')
+      .leftJoin('team_members as all_tm', 't.id', 'all_tm.team_id')
+      .leftJoin('projects as p', function() {
+        this.on('t.id', '=', 'p.team_id').andOn('p.is_archived', '=', db.raw('false'));
+      })
       .where('tm.user_id', userId)
       .where('t.is_active', true)
+      .groupBy('t.id', 't.name', 't.description', 't.owner_id', 't.avatar_url', 't.created_at', 't.updated_at', 'tm.role', 'tm.joined_at')
       .select(
         't.id',
         't.name',
         't.description',
         't.owner_id',
         't.avatar_url',
+        't.is_active',
         't.created_at',
         't.updated_at',
         'tm.role as member_role',
-        'tm.joined_at'
+        'tm.joined_at',
+        db.raw('COUNT(DISTINCT all_tm.id) as member_count'),
+        db.raw('COUNT(DISTINCT p.id) as project_count')
       )
       .orderBy('t.created_at', 'desc')
       .limit(Number(limit))
@@ -105,8 +121,48 @@ export const getTeams = asyncHandler(async (req: AuthRequest, res: Response) => 
       .first();
   }
 
+  // Fetch members for each team (limited to first 5 for performance)
+  const teamIds = teams.map((team: any) => team.id);
+  const allMembers = await db('team_members as tm')
+    .join('users as u', 'tm.user_id', 'u.id')
+    .whereIn('tm.team_id', teamIds)
+    .select(
+      'tm.team_id',
+      'tm.user_id',
+      'u.first_name',
+      'u.last_name',
+      'u.email',
+      'u.avatar_url',
+      'tm.role'
+    )
+    .orderBy('tm.joined_at', 'asc');
+
+  // Group members by team_id
+  const membersByTeam = allMembers.reduce((acc: any, member: any) => {
+    if (!acc[member.team_id]) {
+      acc[member.team_id] = [];
+    }
+    acc[member.team_id].push({
+      user_id: member.user_id,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      email: member.email,
+      avatar_url: member.avatar_url,
+      role: member.role,
+    });
+    return acc;
+  }, {});
+
+  // Add members to each team
+  const teamsWithMembers = teams.map((team: any) => ({
+    ...team,
+    member_count: Number(team.member_count || 0),
+    project_count: Number(team.project_count || 0),
+    members: membersByTeam[team.id] || [],
+  }));
+
   res.json({
-    teams,
+    teams: teamsWithMembers,
     pagination: {
       page: Number(page),
       limit: Number(limit),

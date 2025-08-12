@@ -42,7 +42,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical':
+      case 'urgent':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case 'high':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
@@ -72,18 +72,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'bug':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'feature':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'epic':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-      default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -178,14 +166,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
                   {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
                 </span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(task.type)}`}>
-                  {task.type.charAt(0).toUpperCase() + task.type.slice(1)}
-                </span>
-                {task.story_points && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
-                    {task.story_points} SP
-                  </span>
-                )}
               </div>
 
               {/* Description */}
@@ -226,11 +206,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </div>
 
                 <div className="space-y-4">
-                  {task.time_estimate && (
+                  {task.estimated_hours && (
                     <div>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">Time Estimate</h3>
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">Estimated Hours</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {Math.floor(task.time_estimate / 60)}h {task.time_estimate % 60}m
+                        {task.estimated_hours}h
                       </p>
                     </div>
                   )}
@@ -238,7 +218,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 dark:text-white">Time Spent</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {Math.floor(task.time_spent / 60)}h {task.time_spent % 60}m
+                      {task.actual_hours || 0}h
                     </p>
                   </div>
 

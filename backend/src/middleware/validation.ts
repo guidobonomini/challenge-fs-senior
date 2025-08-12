@@ -4,7 +4,10 @@ import { logger } from '../utils/logger';
 
 export const validateRequest = (schema: Joi.ObjectSchema, property: 'body' | 'query' | 'params' = 'body') => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const { error, value } = schema.validate(req[property], {
+    // Convert undefined to empty object for consistent validation behavior
+    const dataToValidate = req[property] ?? {};
+    
+    const { error, value } = schema.validate(dataToValidate, {
       abortEarly: false,
       stripUnknown: true,
     });

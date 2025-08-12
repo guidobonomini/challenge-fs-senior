@@ -40,30 +40,51 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const loadAnalyticsData = async () => {
     setLoading(true);
     try {
-      // For demo purposes, we'll use sample data
-      // In a real app, you would call the actual API endpoints
-      
       // Load task status data
-      const statusData = analyticsService.generateSampleTaskStatusData();
+      const statusData = await analyticsService.getTaskStatusAnalytics(projectId, teamId);
       setTaskStatusData(statusData);
       
       // Load progress data
-      const progressData = analyticsService.generateSampleProgressData(
-        timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 90
+      const progressData = await analyticsService.getTaskProgressAnalytics(
+        projectId, 
+        teamId, 
+        timeRange
       );
       setTaskProgressData(progressData);
       
       // Load team workload data (only if teamId is provided)
       if (teamId) {
-        const workloadData = analyticsService.generateSampleTeamWorkloadData();
+        const workloadData = await analyticsService.getTeamWorkloadAnalytics(teamId);
         setTeamWorkloadData(workloadData);
         
-        const velocity = analyticsService.generateSampleVelocityData();
+        const velocity = await analyticsService.getVelocityAnalytics(
+          teamId,
+          timeRange === 'week' ? 'week' : 'month',
+          6
+        );
         setVelocityData(velocity);
       }
       
     } catch (error) {
       console.error('Failed to load analytics data:', error);
+      // Keep existing data instead of falling back to random sample data
+      // Only set empty state if no previous data exists
+      if (!taskStatusData) {
+        setTaskStatusData({
+          todo: 0,
+          in_progress: 0,
+          in_review: 0,
+          done: 0,
+          cancelled: 0,
+        });
+      }
+      if (taskProgressData.length === 0) {
+        setTaskProgressData([]);
+      }
+      if (teamId && teamWorkloadData.length === 0) {
+        setTeamWorkloadData([]);
+        setVelocityData([]);
+      }
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,13 @@ import { useSocket } from './useSocket';
 
 export const useNotifications = () => {
   const socketService = useSocket();
-  const { addNotification } = useNotificationStore();
+  const { addNotification, fetchNotifications, refreshUnreadCount } = useNotificationStore();
+
+  // Fetch initial notifications on mount
+  useEffect(() => {
+    fetchNotifications();
+    refreshUnreadCount();
+  }, [fetchNotifications, refreshUnreadCount]);
 
   useEffect(() => {
     if (!socketService.connected) return;

@@ -176,30 +176,6 @@ describe('TaskFilters', () => {
     });
   });
 
-  it('should handle story points range changes', () => {
-    render(<TaskFilters {...mockProps} />);
-    
-    // Expand filters
-    const expandButton = screen.getAllByRole('button').find(btn => 
-      btn.querySelector('.h-5.w-5')
-    );
-    fireEvent.click(expandButton!);
-    
-    // Find story points inputs
-    const minInput = screen.getByPlaceholderText('Min');
-    const maxInput = screen.getByPlaceholderText('Max');
-    
-    fireEvent.change(minInput, { target: { value: '1' } });
-    fireEvent.change(maxInput, { target: { value: '8' } });
-    
-    expect(mockProps.onFiltersChange).toHaveBeenCalledWith({
-      story_points_min: 1,
-    });
-    
-    expect(mockProps.onFiltersChange).toHaveBeenCalledWith({
-      story_points_max: 8,
-    });
-  });
 
   it('should handle boolean filter changes', () => {
     render(<TaskFilters {...mockProps} />);

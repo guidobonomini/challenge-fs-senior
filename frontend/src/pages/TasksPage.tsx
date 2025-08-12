@@ -6,6 +6,7 @@ import TaskTable from '../components/Tasks/TaskTable';
 import { useProjectStore } from '../store/projectStore';
 import { useTaskStore } from '../store/taskStore';
 import { useAuthStore } from '../store/authStore';
+import { taskService } from '../services/tasks';
 import { Task } from '../types';
 import { PlusIcon, ViewColumnsIcon, Squares2X2Icon, QuestionMarkCircleIcon, DocumentArrowDownIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import TaskModal from '../components/Tasks/TaskModal';
@@ -132,6 +133,37 @@ const TasksPage: React.FC = () => {
   const focusSearch = () => {
     if (searchRef.current) {
       searchRef.current.focus();
+    }
+  };
+
+  const handleFiltersChange = async (filters: any, sort: any, page: number, limit: number) => {
+    // Convert the filters to the format expected by the task service
+    const queryParams = {
+      ...filters,
+      page,
+      limit,
+      project_id: selectedProjectId || undefined,
+    };
+
+    if (sort) {
+      queryParams.sort_by = sort.field;
+      queryParams.sort_order = sort.direction;
+    }
+
+    try {
+      const response = await taskService.getTasks(queryParams);
+      // Update the task store with the filtered results
+      const { tasks: filteredTasks, pagination } = response;
+      
+      // For now, we'll directly update the tasks in the task store
+      // This is a bit of a hack, but it works for the table view
+      useTaskStore.setState({ 
+        tasks: filteredTasks, 
+        pagination,
+        isLoading: false 
+      });
+    } catch (error) {
+      console.error('Error fetching filtered tasks:', error);
     }
   };
 
@@ -284,6 +316,7 @@ const TasksPage: React.FC = () => {
             loading={isLoading}
             onTaskClick={handleEditTask}
             onTaskEdit={handleEditTask}
+            onFiltersChange={handleFiltersChange}
             availableUsers={[]} // You may want to fetch these from a user store
             availableProjects={projects.map(p => ({ id: p.id, name: p.name }))}
             showFilters={true}
@@ -296,6 +329,7 @@ const TasksPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         task={selectedTask}
+        projectId={selectedProjectId}
       />
       
       <KeyboardShortcutsModal

@@ -6,14 +6,13 @@ import {
   CalendarIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
-import { Task, Priority, TaskStatus, TaskType } from '../../types';
+import { Task, Priority, TaskStatus } from '../../types';
 import { debounce } from 'lodash';
 
 export interface TaskFilterOptions {
   search?: string;
   status?: TaskStatus[];
   priority?: Priority[];
-  type?: TaskType[];
   assignee_id?: string[];
   reporter_id?: string;
   project_id?: string[];
@@ -24,8 +23,6 @@ export interface TaskFilterOptions {
   has_attachments?: boolean;
   has_comments?: boolean;
   is_overdue?: boolean;
-  story_points_min?: number;
-  story_points_max?: number;
   tags?: string[];
 }
 
@@ -86,17 +83,6 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
     });
   };
 
-  const handleTypeChange = (type: TaskType, checked: boolean) => {
-    const currentTypes = filters.type || [];
-    const newTypes = checked
-      ? [...currentTypes, type]
-      : currentTypes.filter(t => t !== type);
-    
-    onFiltersChange({
-      ...filters,
-      type: newTypes.length > 0 ? newTypes : undefined
-    });
-  };
 
   const handleAssigneeChange = (userId: string, checked: boolean) => {
     const currentAssignees = filters.assignee_id || [];
@@ -136,13 +122,6 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
     });
   };
 
-  const handleStoryPointsChange = (field: 'story_points_min' | 'story_points_max', value: string) => {
-    const numValue = value ? parseInt(value, 10) : undefined;
-    onFiltersChange({
-      ...filters,
-      [field]: numValue
-    });
-  };
 
   const getActiveFilterCount = () => {
     return Object.keys(filters).filter(key => {
@@ -166,15 +145,9 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
     { value: 'low', label: 'Low', color: 'bg-green-100 text-green-800' },
     { value: 'medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
     { value: 'high', label: 'High', color: 'bg-orange-100 text-orange-800' },
-    { value: 'critical', label: 'Critical', color: 'bg-red-100 text-red-800' },
+    { value: 'urgent', label: 'Urgent', color: 'bg-red-100 text-red-800' },
   ];
 
-  const typeOptions: { value: TaskType; label: string; color: string }[] = [
-    { value: 'task', label: 'Task', color: 'bg-blue-100 text-blue-800' },
-    { value: 'bug', label: 'Bug', color: 'bg-red-100 text-red-800' },
-    { value: 'feature', label: 'Feature', color: 'bg-purple-100 text-purple-800' },
-    { value: 'epic', label: 'Epic', color: 'bg-indigo-100 text-indigo-800' },
-  ];
 
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
@@ -270,25 +243,6 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
             </div>
           </div>
 
-          {/* Type Filters */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Type</h4>
-            <div className="flex flex-wrap gap-2">
-              {typeOptions.map(option => (
-                <label key={option.value} className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={filters.type?.includes(option.value) || false}
-                    onChange={(e) => handleTypeChange(option.value, e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${option.color}`}>
-                    {option.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
 
           {/* Assignee Filters */}
           {availableUsers.length > 0 && (
@@ -383,28 +337,6 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
             </div>
           </div>
 
-          {/* Story Points Range */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Story Points</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                value={filters.story_points_min || ''}
-                onChange={(e) => handleStoryPointsChange('story_points_min', e.target.value)}
-                className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                min="0"
-              />
-              <input
-                type="number"
-                placeholder="Max"
-                value={filters.story_points_max || ''}
-                onChange={(e) => handleStoryPointsChange('story_points_max', e.target.value)}
-                className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                min="0"
-              />
-            </div>
-          </div>
 
           {/* Boolean Filters */}
           <div>

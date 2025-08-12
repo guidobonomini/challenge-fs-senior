@@ -28,23 +28,10 @@ const getPriorityColor = (priority: Priority): string => {
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     case 'high':
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-    case 'critical':
+    case 'urgent':
       return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     default:
       return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-  }
-};
-
-const getTypeIcon = (type: string) => {
-  switch (type) {
-    case 'bug':
-      return '🐛';
-    case 'feature':
-      return '✨';
-    case 'epic':
-      return '🎯';
-    default:
-      return '📋';
   }
 };
 
@@ -113,7 +100,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false, onEditTas
       {/* Task Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{getTypeIcon(task.type)}</span>
           <span
             className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
               task.priority
@@ -122,11 +108,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false, onEditTas
             {task.priority}
           </span>
         </div>
-        {task.story_points && (
-          <div className="bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 text-xs font-medium px-2 py-1 rounded">
-            {task.story_points}
-          </div>
-        )}
       </div>
 
       {/* Task Title */}
@@ -158,10 +139,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDragging = false, onEditTas
             </div>
           ) : null}
 
-          {task.time_estimate && (
+          {task.estimated_hours && (
             <div className="flex items-center gap-1">
               <ClockIcon className="w-4 h-4" />
-              <span>{Math.round(task.time_estimate / 60)}h</span>
+              <span>{task.estimated_hours}h</span>
             </div>
           )}
 

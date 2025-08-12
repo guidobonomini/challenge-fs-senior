@@ -43,7 +43,9 @@ export interface TaskWithSuggestions {
   id: string;
   title: string;
   description?: string;
-  type: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  estimated_hours?: number;
+  due_date?: string;
   ai_suggestions: AISuggestion[];
   created_at: string;
   project_name: string;
@@ -93,7 +95,6 @@ class AICategorizationService {
       id: string;
       title: string;
       description?: string;
-      type: string;
       current_category_id?: string;
     };
   }> {
@@ -103,7 +104,6 @@ class AICategorizationService {
         id: string;
         title: string;
         description?: string;
-        type: string;
         current_category_id?: string;
       };
     }>(`/ai/tasks/${taskId}/analyze`);
@@ -168,13 +168,19 @@ class AICategorizationService {
     categorized: number;
     message: string;
   }> {
+    console.log('Calling bulk categorization API for project:', projectId);
+    
     const response = await api.post<{
       processed: number;
       categorized: number;
       message: string;
     }>(`/ai/projects/${projectId}/bulk-categorize`, {
       accept_suggestion: acceptSuggestion
+    }, {
+      timeout: 300000 // 5 minutes timeout for bulk operations
     });
+    
+    console.log('API response received:', response);
     return response;
   }
 

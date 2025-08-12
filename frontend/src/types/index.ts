@@ -34,6 +34,15 @@ export interface TeamMember {
   user?: User;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -41,7 +50,7 @@ export interface Project {
   team_id: string;
   owner_id: string;
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   start_date?: string;
   due_date?: string;
   progress: number;
@@ -70,15 +79,14 @@ export interface Task {
   assignee_id?: string;
   reporter_id: string;
   status: 'todo' | 'in_progress' | 'in_review' | 'done' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  type: 'task' | 'bug' | 'feature' | 'epic';
-  story_points?: number;
-  time_estimate?: number;
-  time_spent: number;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  estimated_hours?: number;
+  actual_hours?: number;
   due_date?: string;
   position: number;
-  parent_task_id?: string;
-  custom_fields?: Record<string, any>;
+  category_id?: string;
+  confidence?: number;
+  ai_reasoning?: string;
   is_archived: boolean;
   started_at?: string;
   completed_at?: string;
@@ -88,6 +96,7 @@ export interface Task {
   // Relations
   assignee?: User;
   reporter?: User;
+  category?: Category;
   project_name?: string;
   project_color?: string;
   team_id?: string;
@@ -194,7 +203,6 @@ export interface TaskFilters extends PaginationParams {
   assignee_id?: string;
   status?: Task['status'];
   priority?: Task['priority'];
-  type?: Task['type'];
   due_date_from?: string;
   due_date_to?: string;
   search?: string;
@@ -242,11 +250,10 @@ export interface CreateTaskData {
   assignee_id?: string;
   status?: Task['status'];
   priority?: Task['priority'];
-  type?: Task['type'];
-  story_points?: number;
-  time_estimate?: number;
+  category_id?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
   due_date?: string;
-  parent_task_id?: string;
 }
 
 export interface CreateCommentData {
@@ -302,9 +309,8 @@ export interface AppError {
   details?: Array<{ field: string; message: string; }>;
 }
 
-export type Priority = 'low' | 'medium' | 'high' | 'critical';
+export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done' | 'cancelled';
-export type TaskType = 'task' | 'bug' | 'feature' | 'epic';
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
 export type UserRole = 'admin' | 'manager' | 'member';
 

@@ -14,7 +14,7 @@ interface ProjectFormData {
   description: string;
   team_id: string;
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   start_date: string;
   due_date: string;
   color: string;
@@ -224,7 +224,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, project })
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-                <option value="critical">Critical</option>
+                <option value="urgent">Critical</option>
               </select>
             </div>
 

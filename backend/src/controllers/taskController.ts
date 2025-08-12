@@ -43,15 +43,15 @@ export const createTask = asyncHandler(async (req: AuthRequest, res: Response) =
     throw createError('Project not found or access denied', 404);
   }
 
+  // Allow any active user to be assigned to tasks
   if (assignee_id) {
-    const assigneeAccess = await db('projects as p')
-      .join('team_members as tm', 'p.team_id', 'tm.team_id')
-      .where('p.id', project_id)
-      .where('tm.user_id', assignee_id)
+    const assignee = await db('users')
+      .where('id', assignee_id)
+      .where('is_active', true)
       .first();
 
-    if (!assigneeAccess) {
-      throw createError('Assignee is not a member of the project team', 400);
+    if (!assignee) {
+      throw createError('Assignee user not found or inactive', 400);
     }
   }
 
@@ -122,12 +122,38 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
     type,
     due_date_from,
     due_date_to,
+    created_from,
+    created_to,
     search,
+    has_attachments,
+    has_comments,
+    is_overdue,
     sort_by = 'position',
     sort_order = 'asc',
   } = req.query;
 
   const offset = (Number(page) - 1) * Number(limit);
+
+  // Helper function to parse array query parameters
+  const parseArrayParam = (param: any): string[] | undefined => {
+    if (!param) return undefined;
+    if (Array.isArray(param)) return param;
+    if (typeof param === 'string') {
+      // Handle comma-separated values (from URL params)
+      if (param.includes(',')) {
+        return param.split(',');
+      }
+      // Single value
+      return [param];
+    }
+    return undefined;
+  };
+
+  // Parse array parameters
+  const statusArray = parseArrayParam(status);
+  const priorityArray = parseArrayParam(priority);
+  const assigneeArray = parseArrayParam(assignee_id);
+  const projectArray = parseArrayParam(project_id);
 
   let query;
   
@@ -148,20 +174,21 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
       .where('p.is_archived', false);
   }
 
-  if (project_id) {
-    query = query.where('t.project_id', project_id);
+  // Apply filters
+  if (projectArray && projectArray.length > 0) {
+    query = query.whereIn('t.project_id', projectArray);
   }
 
-  if (assignee_id) {
-    query = query.where('t.assignee_id', assignee_id);
+  if (assigneeArray && assigneeArray.length > 0) {
+    query = query.whereIn('t.assignee_id', assigneeArray);
   }
 
-  if (status) {
-    query = query.where('t.status', status);
+  if (statusArray && statusArray.length > 0) {
+    query = query.whereIn('t.status', statusArray);
   }
 
-  if (priority) {
-    query = query.where('t.priority', priority);
+  if (priorityArray && priorityArray.length > 0) {
+    query = query.whereIn('t.priority', priorityArray);
   }
 
   if (type) {
@@ -176,11 +203,41 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
     query = query.where('t.due_date', '<=', due_date_to);
   }
 
+  if (created_from) {
+    query = query.where('t.created_at', '>=', created_from);
+  }
+
+  if (created_to) {
+    query = query.where('t.created_at', '<=', created_to);
+  }
+
   if (search) {
     query = query.where(function() {
       this.where('t.title', 'ilike', `%${search}%`)
         .orWhere('t.description', 'ilike', `%${search}%`);
     });
+  }
+
+  // Additional boolean filters
+  if (has_attachments === 'true') {
+    query = query.whereExists(function() {
+      this.select('*')
+        .from('attachments')
+        .whereRaw('attachments.task_id = t.id');
+    });
+  }
+
+  if (has_comments === 'true') {
+    query = query.whereExists(function() {
+      this.select('*')
+        .from('comments')
+        .whereRaw('comments.task_id = t.id');
+    });
+  }
+
+  if (is_overdue === 'true') {
+    query = query.where('t.due_date', '<', new Date())
+      .whereNot('t.status', 'done');
   }
 
   const tasks = await query
@@ -213,20 +270,21 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
       .where('p.is_archived', false);
   }
 
-  if (project_id) {
-    countQuery = countQuery.where('t.project_id', project_id);
+  // Apply same filters to count query
+  if (projectArray && projectArray.length > 0) {
+    countQuery = countQuery.whereIn('t.project_id', projectArray);
   }
 
-  if (assignee_id) {
-    countQuery = countQuery.where('t.assignee_id', assignee_id);
+  if (assigneeArray && assigneeArray.length > 0) {
+    countQuery = countQuery.whereIn('t.assignee_id', assigneeArray);
   }
 
-  if (status) {
-    countQuery = countQuery.where('t.status', status);
+  if (statusArray && statusArray.length > 0) {
+    countQuery = countQuery.whereIn('t.status', statusArray);
   }
 
-  if (priority) {
-    countQuery = countQuery.where('t.priority', priority);
+  if (priorityArray && priorityArray.length > 0) {
+    countQuery = countQuery.whereIn('t.priority', priorityArray);
   }
 
   if (type) {
@@ -241,11 +299,41 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
     countQuery = countQuery.where('t.due_date', '<=', due_date_to);
   }
 
+  if (created_from) {
+    countQuery = countQuery.where('t.created_at', '>=', created_from);
+  }
+
+  if (created_to) {
+    countQuery = countQuery.where('t.created_at', '<=', created_to);
+  }
+
   if (search) {
     countQuery = countQuery.where(function() {
       this.where('t.title', 'ilike', `%${search}%`)
         .orWhere('t.description', 'ilike', `%${search}%`);
     });
+  }
+
+  // Additional boolean filters for count query
+  if (has_attachments === 'true') {
+    countQuery = countQuery.whereExists(function() {
+      this.select('*')
+        .from('attachments')
+        .whereRaw('attachments.task_id = t.id');
+    });
+  }
+
+  if (has_comments === 'true') {
+    countQuery = countQuery.whereExists(function() {
+      this.select('*')
+        .from('comments')
+        .whereRaw('comments.task_id = t.id');
+    });
+  }
+
+  if (is_overdue === 'true') {
+    countQuery = countQuery.where('t.due_date', '<', new Date())
+      .whereNot('t.status', 'done');
   }
 
   const [{ count }] = await countQuery.countDistinct('t.id as count');
@@ -255,7 +343,7 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
       const assignee = task.assignee_id
         ? await db('users')
             .where('id', task.assignee_id)
-            .select('id', 'first_name', 'last_name', 'avatar_url')
+            .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
             .first()
         : null;
 
@@ -263,6 +351,13 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
         .where('id', task.reporter_id)
         .select('id', 'first_name', 'last_name', 'avatar_url')
         .first();
+
+      const category = task.category_id
+        ? await db('categories')
+            .where('id', task.category_id)
+            .select('id', 'name', 'description', 'color')
+            .first()
+        : null;
 
       const commentCount = await db('comments')
         .where('task_id', task.id)
@@ -278,6 +373,7 @@ export const getTasks = asyncHandler(async (req: AuthRequest, res: Response) => 
         ...task,
         assignee,
         reporter,
+        category,
         comment_count: Number(commentCount?.count || 0),
         attachment_count: Number(attachmentCount?.count || 0),
       };
@@ -339,8 +435,15 @@ export const getTask = asyncHandler(async (req: AuthRequest, res: Response) => {
     .select('id', 'first_name', 'last_name', 'email', 'avatar_url')
     .first();
 
+  const category = task.category_id
+    ? await db('categories')
+        .where('id', task.category_id)
+        .select('id', 'name', 'description', 'color')
+        .first()
+    : null;
+
   const comments = await db('comments as c')
-    .join('users as u', 'c.user_id', 'u.id')
+    .join('users as u', 'c.author_id', 'u.id')
     .where('c.task_id', id)
     .whereNull('c.parent_comment_id')
     .select(
@@ -382,6 +485,7 @@ export const getTask = asyncHandler(async (req: AuthRequest, res: Response) => {
       ...task,
       assignee,
       reporter,
+      category,
       comments,
       attachments,
       time_entries: timeEntries,
@@ -395,6 +499,19 @@ export const updateTask = asyncHandler(async (req: AuthRequest, res: Response) =
   const userRole = req.user!.role;
   const { id } = req.params;
   const updateData = req.body;
+
+  // Filter out fields that don't exist in the database schema
+  const allowedFields = [
+    'title', 'description', 'status', 'priority', 'assignee_id', 'due_date',
+    'estimated_hours', 'actual_hours', 'category_id', 'position'
+  ];
+  
+  const filteredUpdateData: any = {};
+  for (const key of Object.keys(updateData)) {
+    if (allowedFields.includes(key)) {
+      filteredUpdateData[key] = updateData[key];
+    }
+  }
 
   let task;
   
@@ -423,32 +540,32 @@ export const updateTask = asyncHandler(async (req: AuthRequest, res: Response) =
     throw createError('Task not found or access denied', 404);
   }
 
-  if (updateData.assignee_id) {
-    const assigneeAccess = await db('projects as p')
-      .join('team_members as tm', 'p.team_id', 'tm.team_id')
-      .where('p.id', task.project_id)
-      .where('tm.user_id', updateData.assignee_id)
+  // Allow any active user to be assigned to tasks
+  if (filteredUpdateData.assignee_id) {
+    const assignee = await db('users')
+      .where('id', filteredUpdateData.assignee_id)
+      .where('is_active', true)
       .first();
 
-    if (!assigneeAccess) {
-      throw createError('Assignee is not a member of the project team', 400);
+    if (!assignee) {
+      throw createError('Assignee user not found or inactive', 400);
     }
   }
 
-  const statusChanged = updateData.status && updateData.status !== task.status;
+  const statusChanged = filteredUpdateData.status && filteredUpdateData.status !== task.status;
   const updatedFields: any = {
-    ...updateData,
+    ...filteredUpdateData,
     updated_at: new Date(),
   };
 
   if (statusChanged) {
-    if (updateData.status === 'in_progress' && !task.started_at) {
+    if (filteredUpdateData.status === 'in_progress' && !task.started_at) {
       updatedFields.started_at = new Date();
     }
-    if (updateData.status === 'done' && !task.completed_at) {
+    if (filteredUpdateData.status === 'done' && !task.completed_at) {
       updatedFields.completed_at = new Date();
     }
-    if (updateData.status !== 'done' && task.completed_at) {
+    if (filteredUpdateData.status !== 'done' && task.completed_at) {
       updatedFields.completed_at = null;
     }
   }
@@ -458,7 +575,7 @@ export const updateTask = asyncHandler(async (req: AuthRequest, res: Response) =
     .update(updatedFields)
     .returning(['id', 'title', 'status', 'priority', 'assignee_id', 'updated_at']);
 
-  logger.info('Task updated:', { taskId: id, userId, changes: Object.keys(updateData) });
+  logger.info('Task updated:', { taskId: id, userId, changes: Object.keys(filteredUpdateData) });
 
   // Emit websocket event for task update
   const socketManager = (req as any).app.locals.socketManager;
@@ -472,7 +589,7 @@ export const updateTask = asyncHandler(async (req: AuthRequest, res: Response) =
     const eventData = {
       task_id: id,
       task: updatedTask,
-      changes: Object.keys(updateData),
+      changes: Object.keys(filteredUpdateData),
       updated_by: userDetails,
       project_id: task.project_id,
     };
@@ -652,15 +769,15 @@ export const assignTask = asyncHandler(async (req: AuthRequest, res: Response) =
     throw createError('Task not found or access denied', 404);
   }
 
+  // Allow any active user to be assigned to tasks
   if (assignee_id) {
-    const assigneeAccess = await db('projects as p')
-      .join('team_members as tm', 'p.team_id', 'tm.team_id')
-      .where('p.id', task.project_id)
-      .where('tm.user_id', assignee_id)
+    const assignee = await db('users')
+      .where('id', assignee_id)
+      .where('is_active', true)
       .first();
 
-    if (!assigneeAccess) {
-      throw createError('User is not a member of the project team', 400);
+    if (!assignee) {
+      throw createError('Assignee user not found or inactive', 400);
     }
   }
 

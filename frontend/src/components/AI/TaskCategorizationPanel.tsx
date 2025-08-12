@@ -32,6 +32,12 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [primarySuggestion, setPrimarySuggestion] = useState<AISuggestion | null>(null);
   const [keywordsDetected, setKeywordsDetected] = useState<string[]>([]);
+  const [taskDetails, setTaskDetails] = useState<{
+    id: string;
+    title: string;
+    description?: string;
+    current_category_id?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(currentCategoryId || null);
@@ -62,6 +68,8 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
       setSuggestions(result.analysis.suggestions);
       setPrimarySuggestion(result.analysis.primary_suggestion);
       setKeywordsDetected(result.analysis.keywords_detected);
+      setTaskDetails(result.task);
+      setSelectedCategoryId(result.task.current_category_id || null);
     } catch (error) {
       console.error('Failed to analyze task:', error);
     } finally {
@@ -78,6 +86,11 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
         feedback || undefined
       );
       setSelectedCategoryId(suggestion.category_id);
+      // Clear suggestions since the task is now categorized
+      setSuggestions([]);
+      setPrimarySuggestion(null);
+      // Re-analyze to get updated task state
+      await analyzeTask();
       onCategorized?.(suggestion.category_id);
       setShowFeedback(null);
       setFeedback('');
@@ -115,6 +128,16 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
     try {
       await aiCategorizationService.manualCategorization(taskId, categoryId);
       setSelectedCategoryId(categoryId);
+      
+      // If category was removed, re-analyze to get suggestions
+      if (categoryId === null) {
+        await analyzeTask();
+      } else {
+        // If category was set, clear suggestions
+        setSuggestions([]);
+        setPrimarySuggestion(null);
+      }
+      
       onCategorized?.(categoryId);
     } catch (error) {
       console.error('Failed to categorize manually:', error);
@@ -139,6 +162,10 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
     return <TagIcon className="h-4 w-4" />;
   };
 
+  const getCategoryDetails = (categoryId: string) => {
+    return categories.find(cat => cat.id === categoryId);
+  };
+
   const currentCategory = categories.find(c => c.id === selectedCategoryId);
 
   return (
@@ -160,6 +187,31 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
           Re-analyze
         </button>
       </div>
+
+      {/* Task Information */}
+      {taskDetails && (
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <InformationCircleIcon className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                Task Information
+              </h4>
+              <h5 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+                {taskDetails.title}
+              </h5>
+              {taskDetails.description && (
+                <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                  {taskDetails.description.length > 300 
+                    ? `${taskDetails.description.substring(0, 300)}...` 
+                    : taskDetails.description
+                  }
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Current Category */}
       {currentCategory && (
@@ -219,9 +271,25 @@ const TaskCategorizationPanel: React.FC<TaskCategorizationPanelProps> = ({
                     </span>
                   </div>
                   
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    {primarySuggestion.reasoning}
-                  </p>
+                  <div className="space-y-2 mb-3">
+                    {(() => {
+                      const categoryDetails = getCategoryDetails(primarySuggestion.category_id);
+                      return categoryDetails?.description && (
+                        <div className="bg-white dark:bg-gray-700 rounded px-3 py-2 border border-purple-200 dark:border-purple-600">
+                          <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Category Description:</span>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                            {categoryDetails.description}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                    <div className="bg-white dark:bg-gray-700 rounded px-3 py-2 border border-purple-200 dark:border-purple-600">
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">AI Reasoning:</span>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        {primarySuggestion.reasoning}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
               

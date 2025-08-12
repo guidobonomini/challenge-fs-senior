@@ -20,8 +20,25 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal Server Error';
+  let statusCode = error.statusCode || 500;
+  let message = error.message || 'Internal Server Error';
+
+  // Handle specific error types
+  if (error.name === 'ValidationError') {
+    statusCode = 400;
+    message = error.message;
+  } else if (error.name === 'CastError') {
+    statusCode = 400;
+    message = 'Invalid ID format';
+  } else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Invalid or expired token';
+  } else if (error.name === 'MongoError' && (error as any).code === 11000) {
+    statusCode = 409;
+    message = 'Resource already exists';
+  } else if (statusCode === 500) {
+    message = 'Internal server error';
+  }
 
   // Send to Sentry for non-operational errors (500 level errors)
   if (!error.isOperational || statusCode >= 500) {
@@ -53,17 +70,13 @@ export const errorHandler = (
     },
   });
 
+  const responsePayload: any = { error: message };
+  
   if (process.env.NODE_ENV === 'development') {
-    res.status(statusCode).json({
-      error: message,
-      stack: error.stack,
-    });
-  } else {
-    const isOperationalError = error.isOperational || statusCode < 500;
-    res.status(statusCode).json({
-      error: isOperationalError ? message : 'Internal Server Error',
-    });
+    responsePayload.stack = error.stack;
   }
+
+  res.status(statusCode).json(responsePayload);
 };
 
 export const notFoundHandler = (req: Request, res: Response): void => {

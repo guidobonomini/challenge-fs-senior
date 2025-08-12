@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { apiService } from './api';
 
 export interface Attachment {
   id: string;
@@ -27,43 +27,28 @@ export interface AttachmentListResponse {
   attachments: Attachment[];
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
 export const attachmentService = {
   async uploadTaskAttachment(taskId: string, file: File): Promise<AttachmentUploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await axios.post(
-      `${API_BASE_URL}/attachments/tasks/${taskId}/upload`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+    const response = await apiService.uploadFile<AttachmentUploadResponse>(
+      `/attachments/tasks/${taskId}/upload`,
+      file
     );
     
-    return response.data;
+    return response;
   },
 
   async getTaskAttachments(taskId: string): Promise<AttachmentListResponse> {
-    const response = await axios.get(`${API_BASE_URL}/attachments/tasks/${taskId}`);
-    return response.data;
+    const response = await apiService.get<AttachmentListResponse>(`/attachments/tasks/${taskId}`);
+    return response;
   },
 
   async downloadAttachment(attachmentId: string): Promise<Blob> {
-    const response = await axios.get(
-      `${API_BASE_URL}/attachments/${attachmentId}/download`,
-      {
-        responseType: 'blob',
-      }
-    );
-    return response.data;
+    const response = await apiService.getBlob(`/attachments/${attachmentId}/download`);
+    return response;
   },
 
   async deleteAttachment(attachmentId: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/attachments/${attachmentId}`);
+    await apiService.delete(`/attachments/${attachmentId}`);
   },
 
   // Utility function to format file size

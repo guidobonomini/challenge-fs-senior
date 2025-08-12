@@ -14,12 +14,16 @@ import { Task, TimeEntry } from '../types';
 import TimeTracker from '../components/TimeTracking/TimeTracker';
 import TimeEntryList from '../components/TimeTracking/TimeEntryList';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import CommentList from '../components/Comments/CommentList';
+import AttachmentList from '../components/Task/AttachmentList';
+import AttachmentUpload from '../components/Task/AttachmentUpload';
 
 const TaskDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentTask, fetchTask, updateTask, isLoading, error } = useTaskStore();
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [attachmentRefreshTrigger, setAttachmentRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -44,9 +48,13 @@ const TaskDetailPage: React.FC = () => {
     }
   };
 
+  const handleAttachmentUpload = () => {
+    setAttachmentRefreshTrigger(prev => prev + 1);
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'text-red-600 dark:text-red-400';
+      case 'urgent': return 'text-red-600 dark:text-red-400';
       case 'high': return 'text-orange-600 dark:text-orange-400';
       case 'medium': return 'text-yellow-600 dark:text-yellow-400';
       case 'low': return 'text-green-600 dark:text-green-400';
@@ -179,28 +187,7 @@ const TaskDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Type
-                  </h3>
-                  <div className="flex items-center">
-                    <TagIcon className="h-4 w-4 mr-1 text-gray-500" />
-                    <span className="capitalize text-gray-900 dark:text-white">
-                      {currentTask.type}
-                    </span>
-                  </div>
-                </div>
 
-                {currentTask.story_points && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Story Points
-                    </h3>
-                    <span className="text-gray-900 dark:text-white">
-                      {currentTask.story_points}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {(currentTask.assignee || currentTask.reporter) && (
@@ -237,7 +224,7 @@ const TaskDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {(currentTask.due_date || currentTask.time_estimate) && (
+              {(currentTask.due_date || currentTask.estimated_hours) && (
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     {currentTask.due_date && (
@@ -254,7 +241,7 @@ const TaskDetailPage: React.FC = () => {
                       </div>
                     )}
 
-                    {currentTask.time_estimate && (
+                    {currentTask.estimated_hours && (
                       <div>
                         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Estimate
@@ -262,7 +249,7 @@ const TaskDetailPage: React.FC = () => {
                         <div className="flex items-center">
                           <ClockIcon className="h-4 w-4 mr-2 text-gray-500" />
                           <span className="text-gray-900 dark:text-white">
-                            {formatTime(currentTask.time_estimate)}
+                            {currentTask.estimated_hours}h
                           </span>
                         </div>
                       </div>
@@ -281,6 +268,30 @@ const TaskDetailPage: React.FC = () => {
               onDelete={(id) => console.log('Delete entry:', id)}
             />
           </div>
+
+          {/* Attachments */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Attachments
+            </h2>
+            
+            <div className="space-y-6">
+              <AttachmentUpload
+                taskId={currentTask.id}
+                onUploadComplete={handleAttachmentUpload}
+              />
+              
+              <AttachmentList
+                taskId={currentTask.id}
+                refreshTrigger={attachmentRefreshTrigger}
+              />
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <CommentList taskId={currentTask.id} />
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -293,7 +304,7 @@ const TaskDetailPage: React.FC = () => {
           />
 
           {/* Time Summary */}
-          {currentTask.time_spent > 0 && (
+          {currentTask.actual_hours && currentTask.actual_hours > 0 && (
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Time Summary
@@ -302,27 +313,27 @@ const TaskDetailPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Time Spent:</span>
                   <span className="text-gray-900 dark:text-white font-medium">
-                    {formatTime(currentTask.time_spent)}
+                    {currentTask.actual_hours}h
                   </span>
                 </div>
-                {currentTask.time_estimate && (
+                {currentTask.estimated_hours && (
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Estimated:</span>
                     <span className="text-gray-900 dark:text-white">
-                      {formatTime(currentTask.time_estimate)}
+                      {currentTask.estimated_hours}h
                     </span>
                   </div>
                 )}
-                {currentTask.time_estimate && currentTask.time_spent > 0 && (
+                {currentTask.estimated_hours && currentTask.actual_hours && currentTask.actual_hours > 0 && (
                   <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Progress:</span>
                       <span className={`font-medium ${
-                        currentTask.time_spent <= currentTask.time_estimate 
+                        currentTask.actual_hours <= currentTask.estimated_hours 
                           ? 'text-green-600 dark:text-green-400'
                           : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {Math.round((currentTask.time_spent / currentTask.time_estimate) * 100)}%
+                        {Math.round((currentTask.actual_hours / currentTask.estimated_hours) * 100)}%
                       </span>
                     </div>
                   </div>

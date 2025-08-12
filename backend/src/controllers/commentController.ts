@@ -6,17 +6,30 @@ import { AuthRequest } from '../types';
 import { logger } from '../utils/logger';
 
 export const createComment = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
   const { task_id } = req.params;
   const { content, parent_comment_id } = req.body;
 
-  const hasAccess = await db('tasks as t')
-    .join('projects as p', 't.project_id', 'p.id')
-    .join('team_members as tm', 'p.team_id', 'tm.team_id')
-    .where('t.id', task_id)
-    .where('tm.user_id', userId)
-    .where('t.is_archived', false)
-    .first();
+  // Check if user has access to the task
+  const userId = req.user!.id;
+  const userRole = req.user!.role;
+  
+  let hasAccess;
+  if (userRole === 'admin') {
+    // Admins can access all non-archived tasks
+    hasAccess = await db('tasks')
+      .where('id', task_id)
+      .where('is_archived', false)
+      .first();
+  } else {
+    // Regular users need to be team members
+    hasAccess = await db('tasks as t')
+      .join('projects as p', 't.project_id', 'p.id')
+      .join('team_members as tm', 'p.team_id', 'tm.team_id')
+      .where('t.id', task_id)
+      .where('tm.user_id', userId)
+      .where('t.is_archived', false)
+      .first();
+  }
 
   if (!hasAccess) {
     throw createError('Task not found or access denied', 404);
@@ -36,7 +49,7 @@ export const createComment = asyncHandler(async (req: AuthRequest, res: Response
     .insert({
       id: uuidv4(),
       task_id,
-      user_id: userId,
+      author_id: userId,
       content,
       parent_comment_id: parent_comment_id || null,
       is_edited: false,
@@ -63,16 +76,30 @@ export const createComment = asyncHandler(async (req: AuthRequest, res: Response
 });
 
 export const getTaskComments = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
   const { task_id } = req.params;
   const { page = 1, limit = 20 } = req.query;
 
-  const hasAccess = await db('tasks as t')
-    .join('projects as p', 't.project_id', 'p.id')
-    .join('team_members as tm', 'p.team_id', 'tm.team_id')
-    .where('t.id', task_id)
-    .where('tm.user_id', userId)
-    .first();
+  // Check if user has access to the task
+  const userId = req.user!.id;
+  const userRole = req.user!.role;
+  
+  let hasAccess;
+  if (userRole === 'admin') {
+    // Admins can access all non-archived tasks
+    hasAccess = await db('tasks')
+      .where('id', task_id)
+      .where('is_archived', false)
+      .first();
+  } else {
+    // Regular users need to be team members
+    hasAccess = await db('tasks as t')
+      .join('projects as p', 't.project_id', 'p.id')
+      .join('team_members as tm', 'p.team_id', 'tm.team_id')
+      .where('t.id', task_id)
+      .where('tm.user_id', userId)
+      .where('t.is_archived', false)
+      .first();
+  }
 
   if (!hasAccess) {
     throw createError('Task not found or access denied', 404);
@@ -81,7 +108,7 @@ export const getTaskComments = asyncHandler(async (req: AuthRequest, res: Respon
   const offset = (Number(page) - 1) * Number(limit);
 
   const comments = await db('comments as c')
-    .join('users as u', 'c.user_id', 'u.id')
+    .join('users as u', 'c.author_id', 'u.id')
     .where('c.task_id', task_id)
     .whereNull('c.parent_comment_id')
     .select(
@@ -102,7 +129,7 @@ export const getTaskComments = asyncHandler(async (req: AuthRequest, res: Respon
   const commentsWithReplies = await Promise.all(
     comments.map(async (comment) => {
       const replies = await db('comments as c')
-        .join('users as u', 'c.user_id', 'u.id')
+        .join('users as u', 'c.author_id', 'u.id')
         .where('c.parent_comment_id', comment.id)
         .select(
           'c.id',
@@ -160,7 +187,7 @@ export const updateComment = asyncHandler(async (req: AuthRequest, res: Response
   const { content } = req.body;
 
   const comment = await db('comments')
-    .where({ id, user_id: userId })
+    .where({ id, author_id: userId })
     .first();
 
   if (!comment) {
@@ -194,7 +221,7 @@ export const deleteComment = asyncHandler(async (req: AuthRequest, res: Response
     .join('team_members as tm', 'p.team_id', 'tm.team_id')
     .where('c.id', id)
     .where(function() {
-      this.where('c.user_id', userId)
+      this.where('c.author_id', userId)
         .orWhere(function() {
           this.where('tm.user_id', userId)
             .whereIn('tm.role', ['admin', 'manager']);

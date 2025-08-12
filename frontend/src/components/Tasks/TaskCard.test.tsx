@@ -18,20 +18,14 @@ const mockTask: Task = {
   description: 'This is a test task',
   status: 'todo',
   priority: 'medium',
-  type: 'task',
   project_id: 'proj-1',
   assignee_id: 'user-1',
   reporter_id: 'user-2',
-  story_points: 3,
-  time_estimate: 480,
-  time_spent: 0,
+  estimated_hours: 8,
+  actual_hours: 0,
   due_date: '2024-12-31T00:00:00Z',
   position: 1,
-  parent_task_id: undefined,
-  custom_fields: undefined,
   is_archived: false,
-  started_at: undefined,
-  completed_at: undefined,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
@@ -65,17 +59,7 @@ describe('TaskCard Component', () => {
     expect(screen.getByText('Medium')).toBeInTheDocument();
   });
 
-  it('displays task type badge', () => {
-    renderTaskCard();
-    
-    expect(screen.getByText('Task')).toBeInTheDocument();
-  });
 
-  it('displays story points when provided', () => {
-    renderTaskCard();
-    
-    expect(screen.getByText('3')).toBeInTheDocument(); // Story points
-  });
 
   it('navigates to task detail when task card is clicked', () => {
     renderTaskCard();
@@ -94,10 +78,10 @@ describe('TaskCard Component', () => {
   });
 
   it('shows high priority tasks with different styling', () => {
-    const highPriorityTask = { ...mockTask, priority: 'critical' as const };
+    const highPriorityTask = { ...mockTask, priority: 'urgent' as const };
     renderTaskCard({ task: highPriorityTask });
     
-    expect(screen.getByText('Critical')).toBeInTheDocument();
+    expect(screen.getByText('Urgent')).toBeInTheDocument();
   });
 
   it('handles tasks without description', () => {
@@ -127,8 +111,7 @@ describe('TaskCard Component', () => {
   it('shows completed tasks with appropriate styling', () => {
     const completedTask = { 
       ...mockTask, 
-      status: 'done' as const,
-      completed_at: '2024-01-02T00:00:00Z'
+      status: 'done' as const
     };
     renderTaskCard({ task: completedTask });
     

@@ -1,11 +1,11 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Task, Project, Team } from '../types';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
+    autoTable: typeof autoTable;
   }
 }
 
@@ -13,9 +13,9 @@ export class ExportService {
   // CSV Export Functions
   static exportTasksToCSV(tasks: Task[], filename: string = 'tasks.csv') {
     const headers = [
-      'ID', 'Title', 'Description', 'Status', 'Priority', 'Type',
-      'Assignee', 'Reporter', 'Project', 'Story Points', 'Time Estimate (hours)',
-      'Time Spent (hours)', 'Due Date', 'Created At', 'Updated At'
+      'ID', 'Title', 'Description', 'Status', 'Priority',
+      'Assignee', 'Reporter', 'Project', 'Estimated Hours', 'Actual Hours',
+      'Due Date', 'Created At', 'Updated At'
     ];
 
     const rows = tasks.map(task => [
@@ -24,13 +24,11 @@ export class ExportService {
       task.description || '',
       task.status,
       task.priority,
-      task.type,
       task.assignee ? `${task.assignee.first_name} ${task.assignee.last_name}` : '',
       task.reporter ? `${task.reporter.first_name} ${task.reporter.last_name}` : '',
       task.project_name || '',
-      task.story_points?.toString() || '',
-      task.time_estimate ? (Math.round(task.time_estimate / 3600 * 100) / 100).toString() : '',
-      task.time_spent ? (Math.round(task.time_spent / 3600 * 100) / 100).toString() : '',
+      task.estimated_hours?.toString() || '',
+      task.actual_hours?.toString() || '',
       task.due_date ? new Date(task.due_date).toLocaleDateString() : '',
       new Date(task.created_at).toLocaleDateString(),
       new Date(task.updated_at).toLocaleDateString()
@@ -105,7 +103,7 @@ export class ExportService {
       task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       head: headers,
       body: rows,
       startY: 60,
@@ -184,7 +182,7 @@ export class ExportService {
         task.assignee ? `${task.assignee.first_name} ${task.assignee.last_name}` : 'Unassigned'
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         head: headers,
         body: rows,
         startY: yPos,

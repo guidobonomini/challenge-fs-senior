@@ -37,7 +37,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       await createTask({
         ...data,
         project_id: projectId,
-        time_estimate: data.time_estimate ? data.time_estimate * 60 : undefined, // Convert hours to seconds
+        estimated_hours: data.estimated_hours || undefined,
       });
       
       reset();
@@ -145,67 +145,32 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
-                  <option value="critical">Critical</option>
+                  <option value="urgent">Critical</option>
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Type
-                </label>
-                <select
-                  {...register('type')}
-                  className="input-base"
-                >
-                  <option value="task">Task</option>
-                  <option value="bug">Bug</option>
-                  <option value="feature">Feature</option>
-                  <option value="epic">Epic</option>
-                </select>
-              </div>
             </div>
 
-            {/* Story Points and Time Estimate */}
+            {/* Time Estimates */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="story_points" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Story Points
-                </label>
-                <input
-                  {...register('story_points', {
-                    min: { value: 1, message: 'Story points must be at least 1' },
-                    max: { value: 100, message: 'Story points must not exceed 100' },
-                  })}
-                  type="number"
-                  min="1"
-                  max="100"
-                  className={`input-base ${errors.story_points ? 'border-error-500' : ''}`}
-                  placeholder="1-100"
-                />
-                {errors.story_points && (
-                  <p className="mt-1 text-sm text-error-600 dark:text-error-400">
-                    {errors.story_points.message}
-                  </p>
-                )}
-              </div>
 
               <div>
-                <label htmlFor="time_estimate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Time Estimate (hours)
+                <label htmlFor="estimated_hours" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Estimated Hours
                 </label>
                 <input
-                  {...register('time_estimate', {
-                    min: { value: 0.25, message: 'Time estimate must be at least 15 minutes' },
+                  {...register('estimated_hours', {
+                    min: { value: 0.25, message: 'Estimated hours must be at least 15 minutes' },
                   })}
                   type="number"
                   step="0.25"
                   min="0.25"
-                  className={`input-base ${errors.time_estimate ? 'border-error-500' : ''}`}
+                  className={`input-base ${errors.estimated_hours ? 'border-error-500' : ''}`}
                   placeholder="Hours"
                 />
-                {errors.time_estimate && (
+                {errors.estimated_hours && (
                   <p className="mt-1 text-sm text-error-600 dark:text-error-400">
-                    {errors.time_estimate.message}
+                    {errors.estimated_hours.message}
                   </p>
                 )}
               </div>

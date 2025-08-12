@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+import apiService from './api';
 
 // Types for analytics data
 export interface TaskStatusAnalytics {
@@ -47,18 +45,18 @@ export interface PriorityDistributionAnalytics {
   low: number;
   medium: number;
   high: number;
-  critical: number;
+  urgent: number;
 }
 
 class AnalyticsService {
   // Task Status Analytics
   async getTaskStatusAnalytics(projectId?: string, teamId?: string): Promise<TaskStatusAnalytics> {
-    const params = new URLSearchParams();
-    if (projectId) params.append('project_id', projectId);
-    if (teamId) params.append('team_id', teamId);
+    const params: any = {};
+    if (projectId) params.project_id = projectId;
+    if (teamId) params.team_id = teamId;
 
-    const response = await axios.get(`${API_BASE_URL}/analytics/task-status?${params}`);
-    return response.data.data;
+    const response = await apiService.get('/analytics/task-status', params) as { data: TaskStatusAnalytics } | TaskStatusAnalytics;
+    return (response as any).data || response;
   }
 
   // Task Progress Over Time
@@ -67,19 +65,18 @@ class AnalyticsService {
     teamId?: string,
     timeRange: 'week' | 'month' | 'quarter' | 'year' = 'month'
   ): Promise<TaskProgressAnalytics[]> {
-    const params = new URLSearchParams();
-    if (projectId) params.append('project_id', projectId);
-    if (teamId) params.append('team_id', teamId);
-    params.append('time_range', timeRange);
+    const params: any = { time_range: timeRange };
+    if (projectId) params.project_id = projectId;
+    if (teamId) params.team_id = teamId;
 
-    const response = await axios.get(`${API_BASE_URL}/analytics/task-progress?${params}`);
-    return response.data.data;
+    const response = await apiService.get('/analytics/task-progress', params) as { data: TaskProgressAnalytics[] } | TaskProgressAnalytics[];
+    return (response as any).data || response;
   }
 
   // Team Workload Analytics
   async getTeamWorkloadAnalytics(teamId: string): Promise<TeamWorkloadAnalytics[]> {
-    const response = await axios.get(`${API_BASE_URL}/analytics/team-workload/${teamId}`);
-    return response.data.data;
+    const response = await apiService.get(`/analytics/team-workload/${teamId}`) as { data: TeamWorkloadAnalytics[] } | TeamWorkloadAnalytics[];
+    return (response as any).data || response;
   }
 
   // Velocity Analytics (for sprint-based teams)
@@ -88,24 +85,13 @@ class AnalyticsService {
     periodType: 'sprint' | 'week' | 'month' = 'sprint',
     periods: number = 6
   ): Promise<VelocityAnalytics[]> {
-    const params = new URLSearchParams();
-    params.append('period_type', periodType);
-    params.append('periods', periods.toString());
+    const params = {
+      period_type: periodType,
+      periods: periods.toString()
+    };
 
-    const response = await axios.get(`${API_BASE_URL}/analytics/velocity/${teamId}?${params}`);
-    return response.data.data;
-  }
-
-  // Burndown Chart Data
-  async getBurndownAnalytics(
-    projectId: string,
-    sprintId?: string
-  ): Promise<BurndownAnalytics[]> {
-    const params = new URLSearchParams();
-    if (sprintId) params.append('sprint_id', sprintId);
-
-    const response = await axios.get(`${API_BASE_URL}/analytics/burndown/${projectId}?${params}`);
-    return response.data.data;
+    const response = await apiService.get(`/analytics/velocity/${teamId}`, params) as { data: VelocityAnalytics[] } | VelocityAnalytics[];
+    return (response as any).data || response;
   }
 
   // Priority Distribution
@@ -113,12 +99,12 @@ class AnalyticsService {
     projectId?: string,
     teamId?: string
   ): Promise<PriorityDistributionAnalytics> {
-    const params = new URLSearchParams();
-    if (projectId) params.append('project_id', projectId);
-    if (teamId) params.append('team_id', teamId);
+    const params: any = {};
+    if (projectId) params.project_id = projectId;
+    if (teamId) params.team_id = teamId;
 
-    const response = await axios.get(`${API_BASE_URL}/analytics/priority-distribution?${params}`);
-    return response.data.data;
+    const response = await apiService.get('/analytics/priority-distribution', params) as { data: PriorityDistributionAnalytics } | PriorityDistributionAnalytics;
+    return (response as any).data || response;
   }
 
   // Time Tracking Analytics
@@ -127,31 +113,12 @@ class AnalyticsService {
     teamId?: string,
     timeRange: 'week' | 'month' | 'quarter' = 'month'
   ) {
-    const params = new URLSearchParams();
-    if (projectId) params.append('project_id', projectId);
-    if (teamId) params.append('team_id', teamId);
-    params.append('time_range', timeRange);
+    const params: any = { time_range: timeRange };
+    if (projectId) params.project_id = projectId;
+    if (teamId) params.team_id = teamId;
 
-    const response = await axios.get(`${API_BASE_URL}/analytics/time-tracking?${params}`);
-    return response.data.data;
-  }
-
-  // User Performance Analytics
-  async getUserPerformanceAnalytics(
-    userId: string,
-    timeRange: 'week' | 'month' | 'quarter' | 'year' = 'month'
-  ) {
-    const params = new URLSearchParams();
-    params.append('time_range', timeRange);
-
-    const response = await axios.get(`${API_BASE_URL}/analytics/user-performance/${userId}?${params}`);
-    return response.data.data;
-  }
-
-  // Project Health Score
-  async getProjectHealthScore(projectId: string) {
-    const response = await axios.get(`${API_BASE_URL}/analytics/project-health/${projectId}`);
-    return response.data.data;
+    const response = await apiService.get('/analytics/time-tracking', params);
+    return (response as any).data || response;
   }
 
   // Generate sample data for development/testing

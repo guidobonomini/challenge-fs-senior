@@ -60,7 +60,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     { value: 'low', label: 'Low', color: 'text-green-700' },
     { value: 'medium', label: 'Medium', color: 'text-yellow-700' },
     { value: 'high', label: 'High', color: 'text-orange-700' },
-    { value: 'critical', label: 'Critical', color: 'text-red-700' },
+    { value: 'urgent', label: 'Critical', color: 'text-red-700' },
   ];
 
   if (selectedTasks.length === 0) {

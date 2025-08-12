@@ -7,10 +7,8 @@ export interface TaskCategory {
   name: string;
   description?: string;
   color: string;
-  icon: string;
-  is_system: boolean;
-  sort_order: number;
-  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AISuggestion {
@@ -34,6 +32,9 @@ export interface AIAnalysisResult {
 class AICategorizationService {
   private readonly MODEL_VERSION = 'claude-3-5-sonnet-20240620';
   private readonly anthropic: Anthropic;
+  private categoriesCache: TaskCategory[] | null = null;
+  private categoriesCacheTimestamp: number = 0;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
   
   constructor() {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -48,14 +49,24 @@ class AICategorizationService {
   }
 
   /**
-   * Get all available task categories
+   * Get all available task categories with caching
    */
-  async getCategories(): Promise<TaskCategory[]> {
+  async getCategories(useCache: boolean = true): Promise<TaskCategory[]> {
     try {
-      return await db('task_categories')
-        .where('is_active', true)
-        .orderBy('sort_order', 'asc')
+      // Check if cache is valid
+      if (useCache && this.categoriesCache && (Date.now() - this.categoriesCacheTimestamp < this.CACHE_TTL)) {
+        return this.categoriesCache;
+      }
+
+      // Fetch from database
+      const categories = await db('categories')
         .orderBy('name', 'asc');
+      
+      // Update cache
+      this.categoriesCache = categories;
+      this.categoriesCacheTimestamp = Date.now();
+      
+      return categories;
     } catch (error) {
       logger.error('Failed to fetch task categories:', error);
       throw error;
@@ -63,20 +74,33 @@ class AICategorizationService {
   }
 
   /**
+   * Clear the categories cache (useful after creating/updating categories)
+   */
+  clearCategoriesCache(): void {
+    this.categoriesCache = null;
+    this.categoriesCacheTimestamp = 0;
+  }
+
+  /**
    * Create a new task category
    */
-  async createCategory(categoryData: Omit<TaskCategory, 'id'>): Promise<TaskCategory> {
+  async createCategory(categoryData: { name: string; description?: string; color?: string; }): Promise<TaskCategory> {
     try {
-      const [category] = await db('task_categories')
+      const [category] = await db('categories')
         .insert({
-          id: db.raw('gen_random_uuid()'),
-          ...categoryData,
+          name: categoryData.name,
+          description: categoryData.description,
+          color: categoryData.color || '#3B82F6',
           created_at: new Date(),
           updated_at: new Date(),
         })
         .returning('*');
       
       logger.info('Task category created:', { categoryId: category.id, name: category.name });
+      
+      // Clear cache after creating category
+      this.clearCategoriesCache();
+      
       return category;
     } catch (error) {
       logger.error('Failed to create task category:', error);
@@ -89,7 +113,7 @@ class AICategorizationService {
    */
   async updateCategory(categoryId: string, updates: Partial<TaskCategory>): Promise<TaskCategory> {
     try {
-      const [category] = await db('task_categories')
+      const [category] = await db('categories')
         .where('id', categoryId)
         .update({
           ...updates,
@@ -102,6 +126,10 @@ class AICategorizationService {
       }
       
       logger.info('Task category updated:', { categoryId, updates: Object.keys(updates) });
+      
+      // Clear cache after updating category
+      this.clearCategoriesCache();
+      
       return category;
     } catch (error) {
       logger.error('Failed to update task category:', error);
@@ -114,15 +142,14 @@ class AICategorizationService {
    */
   async analyzeTaskContent(
     taskTitle: string, 
-    taskDescription?: string,
-    taskType?: string
+    taskDescription?: string
   ): Promise<AIAnalysisResult> {
     try {
       const categories = await this.getCategories();
 
       // If no API key, use fallback mock analysis
       if (!this.anthropic) {
-        return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, taskType, categories);
+        return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, categories);
       }
 
       // Prepare category information for Claude
@@ -138,7 +165,6 @@ ${categoryInfo}
 Task to categorize:
 Title: "${taskTitle}"
 Description: "${taskDescription || 'No description provided'}"
-Type: "${taskType || 'Unknown'}"
 
 Please analyze this task and provide categorization suggestions. Consider:
 1. The task title and description content
@@ -185,7 +211,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
         aiResponse = JSON.parse(responseText);
       } catch (parseError) {
         logger.error('Failed to parse AI response, falling back to mock analysis:', parseError);
-        return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, taskType, categories);
+        return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, categories);
       }
 
       // Map AI suggestions to our format
@@ -227,7 +253,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
       
       // Fallback to mock analysis
       const categories = await this.getCategories();
-      return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, taskType, categories);
+      return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, categories);
     }
   }
 
@@ -237,7 +263,6 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
   private async mockAnalyzeTaskContent(
     taskTitle: string,
     taskDescription?: string,
-    taskType?: string,
     categories?: TaskCategory[]
   ): Promise<AIAnalysisResult> {
     if (!categories) {
@@ -308,13 +333,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
           baseConfidence *= 1.3;
         }
 
-        // Factor in task type if available
-        if (taskType) {
-          const typeKeywords = this.getTypeKeywords(taskType);
-          if (typeKeywords.some(keyword => matchedKeywords.includes(keyword))) {
-            baseConfidence *= 1.2;
-          }
-        }
+        // Task type factor removed as type column doesn't exist
 
         const confidence = Math.min(baseConfidence, 1.0);
         
@@ -375,8 +394,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
       // Analyze task content
       const analysis = await this.analyzeTaskContent(
         task.title,
-        task.description,
-        task.type
+        task.description
       );
 
       let categorized = false;
@@ -396,15 +414,15 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
 
         categorized = true;
 
-        // Record in history
-        await this.recordCategorizationHistory(
+        // Record in history (don't await to speed up)
+        this.recordCategorizationHistory(
           taskId,
           analysis.primary_suggestion.category_id,
           analysis.primary_suggestion.confidence,
           analysis,
           'suggested',
           userId
-        );
+        ).catch(err => logger.error('Failed to record categorization history:', err));
 
         logger.info('Task auto-categorized:', {
           taskId,
@@ -434,6 +452,111 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
   }
 
   /**
+   * Optimized batch categorization for multiple tasks
+   */
+  async categorizeTasks(
+    tasks: Array<{ id: string; title: string; description?: string }>,
+    userId?: string,
+    acceptSuggestion: boolean = true
+  ): Promise<Array<{ taskId: string; analysis: AIAnalysisResult; categorized: boolean }>> {
+    try {
+      // Pre-load categories once for all tasks
+      const categories = await this.getCategories(true);
+      
+      // Process all tasks in parallel
+      const results = await Promise.all(
+        tasks.map(async (task) => {
+          try {
+            // Use cached categories for analysis
+            const analysis = await this.analyzeTaskContentWithCache(
+              task.title,
+              task.description,
+              categories
+            );
+
+            let categorized = false;
+
+            // Auto-categorize if we have a high-confidence suggestion
+            if (acceptSuggestion && analysis.primary_suggestion && analysis.primary_suggestion.confidence >= 0.7) {
+              await db('tasks')
+                .where('id', task.id)
+                .update({
+                  category_id: analysis.primary_suggestion.category_id,
+                  ai_confidence_score: analysis.primary_suggestion.confidence,
+                  ai_suggested_categories: JSON.stringify(analysis.suggestions),
+                  ai_categorized: true,
+                  ai_categorized_at: new Date(),
+                  updated_at: new Date()
+                });
+
+              categorized = true;
+
+              // Record in history (fire and forget)
+              this.recordCategorizationHistory(
+                task.id,
+                analysis.primary_suggestion.category_id,
+                analysis.primary_suggestion.confidence,
+                analysis,
+                'suggested',
+                userId
+              ).catch(err => logger.error('Failed to record history:', err));
+            } else if (analysis.suggestions.length > 0) {
+              // Store suggestions for manual review
+              await db('tasks')
+                .where('id', task.id)
+                .update({
+                  ai_suggested_categories: JSON.stringify(analysis.suggestions),
+                  updated_at: new Date()
+                });
+            }
+
+            return { taskId: task.id, analysis, categorized };
+          } catch (error) {
+            logger.error('Failed to categorize task:', { taskId: task.id, error });
+            return {
+              taskId: task.id,
+              analysis: {
+                suggestions: [],
+                primary_suggestion: null,
+                keywords_detected: [],
+                analysis_timestamp: new Date().toISOString(),
+                model_version: this.MODEL_VERSION
+              },
+              categorized: false
+            };
+          }
+        })
+      );
+
+      return results;
+    } catch (error) {
+      logger.error('Failed to batch categorize tasks:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze task content with cached categories
+   */
+  private async analyzeTaskContentWithCache(
+    taskTitle: string,
+    taskDescription?: string,
+    categories?: TaskCategory[]
+  ): Promise<AIAnalysisResult> {
+    if (!categories) {
+      categories = await this.getCategories(true);
+    }
+
+    // If no API key, use fallback mock analysis
+    if (!this.anthropic) {
+      return await this.mockAnalyzeTaskContent(taskTitle, taskDescription, categories);
+    }
+
+    // For real API calls, still use the main method for now
+    return await this.analyzeTaskContent(taskTitle, taskDescription);
+  }
+
+  /**
    * Accept an AI categorization suggestion
    */
   async acceptSuggestion(
@@ -455,9 +578,20 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
       let suggestions = [];
       if (task.ai_suggested_categories) {
         try {
-          suggestions = JSON.parse(task.ai_suggested_categories);
+          // Handle both string and already-parsed JSON data from JSONB column
+          if (typeof task.ai_suggested_categories === 'string') {
+            suggestions = JSON.parse(task.ai_suggested_categories);
+          } else {
+            // Already parsed by PostgreSQL/Knex as JSONB
+            suggestions = task.ai_suggested_categories;
+          }
         } catch (error) {
-          logger.warn('Failed to parse ai_suggested_categories for task:', task.id, error);
+          logger.warn('Failed to parse ai_suggested_categories for task:', {
+            taskId: task.id,
+            dataType: typeof task.ai_suggested_categories,
+            rawData: task.ai_suggested_categories,
+            error: error.message
+          });
           suggestions = [];
         }
       }
@@ -465,7 +599,13 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
       const acceptedSuggestion = suggestions.find((s: AISuggestion) => s.category_id === categoryId);
       
       if (!acceptedSuggestion) {
-        throw new Error('Suggestion not found');
+        logger.warn('Suggestion not found for task:', {
+          taskId,
+          categoryId,
+          availableSuggestions: suggestions.map(s => ({ category_id: s.category_id, confidence: s.confidence })),
+          ai_suggested_categories: task.ai_suggested_categories
+        });
+        throw new Error(`Suggestion not found. Task has ${suggestions.length} suggestions, but none match category_id: ${categoryId}`);
       }
 
       await db('tasks')
@@ -475,6 +615,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
           ai_confidence_score: acceptedSuggestion.confidence,
           ai_categorized: true,
           ai_categorized_at: new Date(),
+          ai_suggested_categories: null, // Clear suggestions after acceptance
           updated_at: new Date()
         });
 
@@ -539,6 +680,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
           category_id: categoryId,
           ai_confidence_score: null,
           ai_categorized: false,
+          ai_suggested_categories: categoryId ? null : undefined, // Clear suggestions when setting a category, keep when removing category
           updated_at: new Date()
         });
 
@@ -562,7 +704,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
   }
 
   /**
-   * Bulk categorize tasks for a project
+   * Bulk categorize tasks for a project with optimized parallel processing
    */
   async bulkCategorizeProject(
     projectId: string,
@@ -574,26 +716,57 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
         .where('project_id', projectId)
         .where('is_archived', false)
         .whereNull('category_id')
-        .select('id', 'title', 'description', 'type');
+        .select('id', 'title', 'description');
 
-      let processed = 0;
-      let categorized = 0;
+      if (tasks.length === 0) {
+        return { processed: 0, categorized: 0 };
+      }
 
-      for (const task of tasks) {
+      logger.info(`Starting optimized bulk categorization for ${tasks.length} tasks`);
+
+      // Pre-cache categories to avoid redundant DB queries
+      await this.getCategories(true);
+
+      // Process tasks in larger parallel batches with the optimized method
+      const BATCH_SIZE = 10; // Increased batch size since we're more efficient now
+      const batches = [];
+      
+      for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+        batches.push(tasks.slice(i, i + BATCH_SIZE));
+      }
+
+      let totalProcessed = 0;
+      let totalCategorized = 0;
+
+      // Process each batch using the optimized batch method
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        
         try {
-          const result = await this.categorizeTask(task.id, userId, acceptSuggestion);
-          processed++;
-          if (result.categorized) {
-            categorized++;
-          }
+          // Use the new optimized batch categorization method
+          const results = await this.categorizeTasks(batch, userId, acceptSuggestion);
+          
+          // Count results
+          totalProcessed += results.length;
+          totalCategorized += results.filter(r => r.categorized).length;
+          
+          // Log progress
+          logger.info(`Bulk categorization progress: Batch ${batchIndex + 1}/${batches.length} - ${totalProcessed}/${tasks.length} processed, ${totalCategorized} categorized`);
         } catch (error) {
-          logger.error('Failed to categorize task in bulk:', { taskId: task.id, error });
-          processed++;
+          logger.error(`Failed to process batch ${batchIndex + 1}:`, error);
+          // Still count as processed even if failed
+          totalProcessed += batch.length;
         }
       }
 
-      logger.info('Bulk categorization completed:', { projectId, processed, categorized });
-      return { processed, categorized };
+      logger.info('Bulk categorization completed:', { 
+        projectId, 
+        processed: totalProcessed, 
+        categorized: totalCategorized,
+        successRate: `${Math.round((totalCategorized / totalProcessed) * 100)}%`
+      });
+      
+      return { processed: totalProcessed, categorized: totalCategorized };
     } catch (error) {
       logger.error('Failed to bulk categorize project:', error);
       throw error;
@@ -640,7 +813,7 @@ Only suggest categories where confidence is above 0.2. Sort by confidence (highe
 
       // Get category distribution
       const categoryDistribution = await baseQuery.clone()
-        .join('task_categories as tc', 'tasks.category_id', 'tc.id')
+        .join('categories as tc', 'tasks.category_id', 'tc.id')
         .whereNotNull('tasks.category_id')
         .groupBy('tc.id', 'tc.name')
         .select('tc.name as category_name')

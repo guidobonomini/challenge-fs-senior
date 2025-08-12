@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Team Management', () => {
   test.beforeEach(async ({ page }) => {
     // Login as admin
-    await page.goto('/login');
+    await page.goto('/auth/login');
     await page.fill('input[name="email"]', 'admin@demo.com');
     await page.fill('input[name="password"]', 'password123');
     await page.getByRole('button', { name: 'Sign in' }).click();

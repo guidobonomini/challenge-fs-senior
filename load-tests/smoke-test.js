@@ -1,4 +1,5 @@
 import { check, group, sleep } from 'k6';
+import http from 'k6/http';
 import { config } from './config.js';
 import { AuthHelper, APIHelper, randomUser, commonChecks } from './utils.js';
 
@@ -62,8 +63,8 @@ export default function(data) {
         'tasks endpoint works': (r) => r.status === 200
       });
       
-      // Test dashboard/health endpoints
-      const healthResponse = api.get('/health');
+      // Test dashboard/health endpoints  
+      const healthResponse = http.get(`${config.baseUrl}/health`);
       check(healthResponse, {
         'health endpoint works': (r) => r.status === 200,
         'health response time OK': (r) => r.timings.duration < 1000

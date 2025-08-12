@@ -23,12 +23,12 @@ class TaskService {
     return apiService.get<{ task: Task }>(`/tasks/${id}`);
   }
 
-  async createTask(data: CreateTaskData): Promise<ApiResponse<{ task: Task }>> {
-    return apiService.post<ApiResponse<{ task: Task }>>('/tasks', data);
+  async createTask(data: CreateTaskData): Promise<{ message: string; task: Task }> {
+    return apiService.post<{ message: string; task: Task }>('/tasks', data);
   }
 
-  async updateTask(id: string, data: Partial<CreateTaskData>): Promise<ApiResponse<{ task: Task }>> {
-    return apiService.put<ApiResponse<{ task: Task }>>(`/tasks/${id}`, data);
+  async updateTask(id: string, data: Partial<CreateTaskData>): Promise<{ message: string; task: Task }> {
+    return apiService.put<{ message: string; task: Task }>(`/tasks/${id}`, data);
   }
 
   async deleteTask(id: string): Promise<ApiResponse> {
@@ -39,12 +39,12 @@ class TaskService {
     return apiService.patch<ApiResponse>(`/tasks/${id}/position`, data);
   }
 
-  async assignTask(id: string, assignee_id: string | null): Promise<ApiResponse<{ task: Task }>> {
-    return apiService.patch<ApiResponse<{ task: Task }>>(`/tasks/${id}/assign`, { assignee_id });
+  async assignTask(id: string, assignee_id: string | null): Promise<{ message: string; task: Task }> {
+    return apiService.patch<{ message: string; task: Task }>(`/tasks/${id}/assign`, { assignee_id });
   }
 
-  async bulkUpdateTasks(data: BulkUpdateTasksData): Promise<ApiResponse<{ tasks: Task[] }>> {
-    return apiService.patch<ApiResponse<{ tasks: Task[] }>>('/tasks/bulk-update', data);
+  async bulkUpdateTasks(data: BulkUpdateTasksData): Promise<{ message: string; tasks: Task[] }> {
+    return apiService.patch<{ message: string; tasks: Task[] }>('/tasks/bulk-update', data);
   }
 
   async getTasksByProject(projectId: string, filters?: Omit<TaskFilters, 'project_id'>): Promise<TasksResponse> {
